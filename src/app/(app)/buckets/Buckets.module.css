@@ -1,0 +1,76 @@
+.pageHeader {
+  margin-bottom: var(--space-5);
+}
+
+.pageTitle {
+  margin-bottom: var(--space-2);
+}
+
+.pageIntro {
+  color: var(--ink-muted);
+  font-size: 0.9375rem;
+  max-width: 68ch;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+/**
+ * The bucket *chooser* is a card grid — a handful of destinations, each needing
+ * a label and a sentence. The file browser inside a bucket is a dense table,
+ * which is the right density for that job.
+ */
+.bucketCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.bucketCard:hover {
+  border-color: var(--primary);
+  background: var(--primary-tint);
+}
+
+.bucketTop {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.bucketLabel {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.bucketDescription {
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+  flex: 1;
+}
+
+.bucketMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.bucketName {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  word-break: break-all;
+}

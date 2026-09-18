@@ -1,0 +1,44 @@
+/**
+ * Dark anchor band. One row: our white logo, the attribution line, copyright.
+ * No link farm, no filler columns.
+ */
+.footer {
+  background: var(--footer-bg);
+  color: #f7f5f2;
+  margin-top: auto;
+}
+
+.inner {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.logo {
+  display: block;
+  height: 22px;
+  width: auto;
+  flex-shrink: 0;
+}
+
+.attribution {
+  font-size: 0.875rem;
+  color: rgba(247, 245, 242, 0.82);
+}
+
+.copyright {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  color: rgba(247, 245, 242, 0.55);
+}
+
+@media (max-width: 640px) {
+  .copyright {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}

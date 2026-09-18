@@ -1,0 +1,388 @@
+/* Shared primitives. Restraint is the rule: aubergine is the only bold colour. */
+
+/* ---------------------------------------------------------------- Button -- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease,
+    color 120ms ease;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.primary {
+  background: var(--primary);
+  color: #fff;
+}
+.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--border-strong);
+}
+.secondary:hover:not(:disabled) {
+  background: var(--primary-tint);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--ink-muted);
+}
+.ghost:hover:not(:disabled) {
+  background: var(--primary-tint);
+  color: var(--primary);
+}
+
+.danger {
+  background: var(--surface);
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 35%, var(--border));
+}
+.danger:hover:not(:disabled) {
+  background: var(--error-bg);
+}
+
+.small {
+  font-size: 0.875rem;
+  padding: 0.3125rem 0.625rem;
+}
+
+.block {
+  width: 100%;
+}
+
+/* ------------------------------------------------------------------ Card -- */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.cardHeader {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.cardHeaderText {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.cardDescription {
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+  margin-top: var(--space-1);
+}
+
+.cardBody {
+  padding: var(--space-5);
+}
+
+.cardBodyFlush {
+  padding: 0;
+}
+
+/* ----------------------------------------------------------------- Field -- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.hint {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+.input,
+.select {
+  font-family: inherit;
+  font-size: 0.9375rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.625rem;
+  width: 100%;
+}
+
+.input:hover:not(:disabled),
+.select:hover:not(:disabled) {
+  border-color: var(--ink-muted);
+}
+
+.input:disabled,
+.select:disabled {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+.inputInvalid {
+  border-color: var(--error);
+}
+
+.inputMono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+}
+
+.fieldError {
+  font-size: 0.8125rem;
+  color: var(--error);
+}
+
+/* --------------------------------------------------------------- Message -- */
+
+.message {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  border: 1px solid transparent;
+}
+
+.messageError {
+  background: var(--error-bg);
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 22%, transparent);
+}
+
+.messageSuccess {
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 22%, transparent);
+}
+
+.messageWarning {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 25%, transparent);
+}
+
+.messageInfo {
+  background: var(--info-bg);
+  color: var(--ink);
+  border-color: var(--border);
+}
+
+/* ----------------------------------------------------------------- Badge -- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.125rem 0.4375rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badgeNeutral {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  border-color: var(--border);
+}
+
+.badgeSuccess {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.badgeWarning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.badgeError {
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.badgePrimary {
+  background: var(--primary-tint);
+  color: var(--primary);
+}
+
+/* ----------------------------------------------------------------- Table -- */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table th {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover {
+  background: var(--surface-sunken);
+}
+
+.numeric {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Sortable column headers. */
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sortButton:hover {
+  color: var(--primary);
+}
+
+.sortIndicator {
+  font-size: 0.625rem;
+  color: var(--primary);
+}
+
+/* ------------------------------------------------------------ EmptyState -- */
+
+.empty {
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+}
+
+.emptyTitle {
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.emptyBody {
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+  max-width: 44ch;
+  margin: 0 auto;
+}
+
+.emptyAction {
+  margin-top: var(--space-4);
+}
+
+/* --------------------------------------------------------------- Spinner -- */
+
+.spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  animation: spin 620ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------------------------------------------------------------- Dialog -- */
+
+.dialog {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0;
+  max-width: 520px;
+  width: calc(100vw - 2rem);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.dialog::backdrop {
+  background: rgb(23 20 23 / 0.45);
+}
+
+.dialogHeader {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.dialogBody {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dialogFooter {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}

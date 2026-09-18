@@ -1,0 +1,181 @@
+.header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.headerText {
+  flex: 1;
+  min-width: 260px;
+}
+
+.title {
+  margin-bottom: var(--space-2);
+}
+
+.intro {
+  color: var(--ink-muted);
+  font-size: 0.9375rem;
+  max-width: 72ch;
+}
+
+.toolbar {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+
+.search {
+  flex: 1;
+  min-width: 220px;
+  max-width: 360px;
+}
+
+.filter {
+  min-width: 160px;
+}
+
+.count {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.userCell {
+  min-width: 0;
+}
+
+.userName {
+  font-weight: 500;
+}
+
+.userEmail {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  word-break: break-all;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.rowActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* Group access editor */
+
+.groupGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.accessRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.accessRow:last-child {
+  border-bottom: none;
+}
+
+.accessBucket {
+  flex: 1;
+  min-width: 180px;
+}
+
+.accessBucketLabel {
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.accessBucketName {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.accessControl {
+  min-width: 170px;
+}
+
+.groupFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+
+.dialogForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.checkboxList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: 0.9375rem;
+}
+
+.checkboxRow input {
+  margin-top: 0.25rem;
+  accent-color: var(--primary);
+}
+
+.checkboxText {
+  min-width: 0;
+}
+
+.checkboxHint {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+/* Audit log */
+
+.detailCell {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loadMore {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+  border-top: 1px solid var(--border);
+}

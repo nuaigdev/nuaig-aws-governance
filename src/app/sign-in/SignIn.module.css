@@ -1,0 +1,145 @@
+.page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.panel {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Identity above the card, so the client is clear before sign-in. */
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  justify-content: center;
+  margin-bottom: var(--space-5);
+}
+
+.logo {
+  display: block;
+  height: 30px;
+  width: auto;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-strong);
+}
+
+.clientName {
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.clientLogo {
+  display: block;
+  height: 28px;
+  width: auto;
+  max-width: 170px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+}
+
+.heading {
+  margin-bottom: var(--space-2);
+}
+
+.intro {
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+  margin-bottom: var(--space-5);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.actions {
+  margin-top: var(--space-2);
+}
+
+/* TOTP enrolment */
+
+.qrFrame {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.qr {
+  display: block;
+  width: 180px;
+  height: 180px;
+  /* The QR is pure black on white regardless of theme — a tinted QR reads
+     unreliably on some phone cameras. */
+  background: #fff;
+}
+
+.secretBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.secret {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.06em;
+  word-break: break-all;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+}
+
+.steps {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.policyList {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+.footerNote {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  margin-top: var(--space-5);
+}
+
+.backButton {
+  margin-top: var(--space-3);
+  align-self: flex-start;
+}

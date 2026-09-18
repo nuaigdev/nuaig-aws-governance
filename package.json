@@ -1,0 +1,46 @@
+{
+  "name": "nuaig-s3-governance-portal",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "predev": "node scripts/ensure-amplify-outputs.mjs",
+    "dev": "next dev",
+    "prebuild": "node scripts/ensure-amplify-outputs.mjs",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "pretypecheck": "node scripts/ensure-amplify-outputs.mjs",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p amplify/tsconfig.json",
+    "test": "node --import tsx --test \"config/**/*.test.ts\" \"amplify/**/*.test.ts\" \"src/**/*.test.ts\"",
+    "test:watch": "node --import tsx --test --watch \"config/**/*.test.ts\" \"amplify/**/*.test.ts\" \"src/**/*.test.ts\"",
+    "sandbox": "ampx sandbox",
+    "seed:showcase": "tsx scripts/seed-showcase-data.ts",
+    "sandbox:delete": "ampx sandbox delete",
+    "verify": "npm run typecheck && npm run lint && npm run test"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1135.0",
+    "@aws-sdk/client-iam": "^3.1135.0",
+    "aws-amplify": "^6.20.0",
+    "next": "16.3.5",
+    "qrcode": "^1.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.25.0",
+    "@aws-amplify/backend-cli": "^1.10.0",
+    "@aws-sdk/client-s3": "^3.1135.0",
+    "@types/aws-lambda": "^8.10.163",
+    "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "aws-cdk-lib": "^2.270.0",
+    "constructs": "^10.8.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.5",
+    "tsx": "^4.20.6",
+    "typescript": "^5"
+  }
+}
