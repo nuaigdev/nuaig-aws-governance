@@ -17,11 +17,12 @@ import type { AppSyncResolverEvent } from "aws-lambda";
 // placeholder under .amplify/generated keeps a fresh clone typechecking.
 import { env } from "$amplify/env/admin-groups";
 
-import { activeClient } from "../../../config";
+import { activeClient } from "../../../config/index";
 import { grantedBuckets } from "../../../config/access";
 import type { AccessMode } from "../../../config/types";
 import type { Schema } from "../../data/resource";
 import { buildBucketPolicy } from "../../shared/bucket-policy";
+import { withEmail } from "../shared/actor-email";
 import { writeAuditEvent } from "../shared/audit";
 import { resolveCaller } from "../shared/identity";
 import {
@@ -45,7 +46,7 @@ const USER_POOL_ID = env.AMPLIFY_AUTH_USERPOOL_ID;
 export const handler = async (
   event: AppSyncResolverEvent<{ operation: string; payload: unknown }>,
 ): Promise<unknown> => {
-  const caller = resolveCaller(event);
+  const caller = await withEmail(resolveCaller(event), USER_POOL_ID);
 
   if (!caller.groups.includes(ADMIN_GROUP)) {
     await writeAuditEvent(data, activeClient.clientId, caller, {

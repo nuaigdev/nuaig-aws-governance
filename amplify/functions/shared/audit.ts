@@ -58,7 +58,7 @@ export async function writeAuditEvent(
     occurredAt: new Date().toISOString(),
     sourceIp: caller.sourceIp ?? null,
     userAgent: caller.userAgent ?? null,
-    detail: entry.detail ?? null,
+    detail: serialiseDetail(entry.detail),
   };
 
   const result = await client.models.AuditEvent.create(record);
@@ -70,4 +70,19 @@ export async function writeAuditEvent(
     console.error("AUDIT_WRITE_FAILED", { message, record });
     throw new Error(`Failed to write audit event: ${message}`);
   }
+}
+
+/**
+ * Serialises `detail` for the `AWSJSON` field.
+ *
+ * AppSync's `AWSJSON` scalar takes a JSON *string* on input. It also parses
+ * one on the way in, so a detail that arrived as a mutation argument reaches
+ * the handler as an object, and passing that straight back to `create` is
+ * rejected ("Variable 'detail' has an invalid value"). Both shapes are
+ * normalised here, so no call site has to remember which one it holds.
+ */
+export function serialiseDetail(detail: unknown): string | null {
+  if (detail === undefined || detail === null) return null;
+  if (typeof detail === "string") return detail;
+  return JSON.stringify(detail);
 }

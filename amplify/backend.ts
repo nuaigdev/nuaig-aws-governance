@@ -11,10 +11,11 @@ import {
   BlockPublicAccess,
   Bucket,
   BucketEncryption,
+  HttpMethods,
   type IBucket,
 } from "aws-cdk-lib/aws-s3";
 
-import { activeClient } from "../config";
+import { activeClient } from "../config/index";
 import { grantedBuckets } from "../config/access";
 import { auth } from "./auth/resource";
 import { data } from "./data/resource";
@@ -37,7 +38,35 @@ const backend = defineBackend({
   postAuthenticationFunction,
 });
 
-const stack = Stack.of(backend.data.resources.graphqlApi);
+/**
+ * Every function imports `config/`, which resolves the active client from
+ * `NEXT_PUBLIC_CLIENT_ID` when the module loads. The deploy process has it; a
+ * Lambda does not unless it is passed in. Without this, each function throws
+ * during init — for the post-authentication trigger that means every sign-in is
+ * refused after a correct password.
+ *
+ * A literal string, so it adds no cross-stack reference.
+ */
+for (const fn of [
+  backend.adminUsersFunction,
+  backend.adminGroupsFunction,
+  backend.auditWriterFunction,
+  backend.postAuthenticationFunction,
+]) {
+  fn.addEnvironment("NEXT_PUBLIC_CLIENT_ID", activeClient.clientId);
+}
+
+/**
+ * Stack placement matters here. The data stack depends on auth (it authorises
+ * against the user pool), so nothing in auth may reference anything in data.
+ *
+ * - `authStack` holds the permissions boundary, because the group roles it caps
+ *   live in auth. Putting it in data made auth depend on data: a cycle.
+ * - `storageStack` holds the buckets. They reference nothing, so they get a
+ *   stack of their own and can never take part in a cycle.
+ */
+const authStack = Stack.of(backend.auth.resources.userPool);
+const storageStack = backend.createStack("storage");
 
 /* -------------------------------------------------------------------------- */
 /* Buckets                                                                     */
@@ -46,19 +75,37 @@ const stack = Stack.of(backend.data.resources.graphqlApi);
 /**
  * Created for our showcase, adopted by name for a real client.
  *
- * Neither path grants the stack permission to delete a bucket: managed buckets
- * are created with `RETAIN`, so tearing the stack down leaves the data intact
- * and someone has to delete it deliberately, out of band.
+ * Managed buckets are declared with the CDK default removal policy, RETAIN, and
+ * versioned. **Caveat, observed:** an Amplify *sandbox* applies DESTROY to every
+ * resource regardless, so `ampx sandbox delete` tries to delete these buckets.
+ * S3 refuses while any object version remains, so data still has to be removed
+ * deliberately first — but the retention guarantee only fully holds for branch
+ * (`pipeline-deploy`) deployments. Never point a sandbox at real client data.
  */
 const buckets = new Map<string, IBucket>();
 
+/**
+ * Origins allowed to call the buckets from a browser.
+ *
+ * Comma-separated in `PORTAL_ALLOWED_ORIGINS`; defaults to the local dev
+ * server. A hosted deployment must set it to the portal's own URL.
+ *
+ * Only applies to `managed` buckets. A client's `existing` buckets are
+ * imported, not owned, so their CORS rules must be set by whoever administers
+ * them — a deployment step to flag, not something this stack can do.
+ */
+const PORTAL_ORIGINS = (process.env.PORTAL_ALLOWED_ORIGINS ?? "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 for (const bucket of activeClient.buckets) {
   if (activeClient.bucketProvisioning === "existing") {
-    buckets.set(bucket.id, Bucket.fromBucketName(stack, `Bucket${bucket.id}`, bucket.bucketName));
+    buckets.set(bucket.id, Bucket.fromBucketName(storageStack, `Bucket${bucket.id}`, bucket.bucketName));
     continue;
   }
 
-  const created = new Bucket(stack, `Bucket${bucket.id}`, {
+  const created = new Bucket(storageStack, `Bucket${bucket.id}`, {
     bucketName: bucket.bucketName,
     // Versioning is what makes the "never overwrite" promise recoverable: even
     // if a collision check is ever bypassed, the prior version survives.
@@ -66,8 +113,27 @@ for (const bucket of activeClient.buckets) {
     encryption: BucketEncryption.S3_MANAGED,
     enforceSSL: true,
     blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
-    // No `autoDeleteObjects`, and no `removalPolicy: DESTROY`. The default
-    // RETAIN is the correct behaviour for a governance product.
+    // The browser calls S3 directly with the session's scoped credentials, so
+    // the portal's origin must be allowed. DELETE is deliberately absent — the
+    // same ceiling the IAM policy enforces, stated again at the bucket.
+    cors: [
+      {
+        allowedOrigins: PORTAL_ORIGINS,
+        allowedMethods: [
+          HttpMethods.GET,
+          HttpMethods.HEAD,
+          HttpMethods.PUT,
+          HttpMethods.POST,
+        ],
+        allowedHeaders: ["*"],
+        // ETag is required to complete multipart uploads; the metadata header
+        // carries the "uploaded by" stamp the file browser displays.
+        exposedHeaders: ["ETag", "x-amz-version-id", "x-amz-meta-uploaded-by"],
+        maxAge: 3000,
+      },
+    ],
+    // No `autoDeleteObjects`, and no `removalPolicy: DESTROY` here. RETAIN is
+    // the correct behaviour for a governance product (sandbox caveat above).
   });
 
   buckets.set(bucket.id, created);
@@ -85,7 +151,7 @@ for (const bucket of activeClient.buckets) {
  * narrow what is permitted here, never exceed it. Editing the boundary
  * requires a deploy.
  */
-const permissionsBoundary = new ManagedPolicy(stack, "PortalGroupBoundary", {
+const permissionsBoundary = new ManagedPolicy(authStack, "PortalGroupBoundary", {
   managedPolicyName: `${activeClient.clientId}-portal-group-boundary`,
   description:
     "Ceiling for S3 governance portal group roles. Caps access to configured " +
@@ -235,7 +301,7 @@ adminGroupsLambda.addToRolePolicy(
     effect: Effect.ALLOW,
     actions: ["iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy"],
     resources: Object.values(groupRoleNames).map(
-      (roleName) => `arn:aws:iam::${stack.account}:role/${roleName}`,
+      (roleName) => `arn:aws:iam::${authStack.account}:role/${roleName}`,
     ),
   }),
 );
@@ -245,6 +311,24 @@ backend.adminGroupsFunction.addEnvironment(
   JSON.stringify(groupRoleNames),
 );
 backend.adminGroupsFunction.addEnvironment("AMPLIFY_AUTH_USERPOOL_ID", userPool.userPoolId);
+
+/**
+ * AppSync hands resolvers the access token, which carries no email claim. The
+ * audit writer and the group manager look the actor's email up so the audit
+ * log names people rather than UUIDs. Read-only, scoped to this pool.
+ * (`admin-users` already holds AdminGetUser above.)
+ */
+backend.auditWriterFunction.addEnvironment("AMPLIFY_AUTH_USERPOOL_ID", userPool.userPoolId);
+for (const lambda of [backend.auditWriterFunction.resources.lambda, adminGroupsLambda]) {
+  lambda.addToRolePolicy(
+    new PolicyStatement({
+      sid: "ResolveActorEmail",
+      effect: Effect.ALLOW,
+      actions: ["cognito-idp:AdminGetUser"],
+      resources: [userPool.userPoolArn],
+    }),
+  );
+}
 
 /* -------------------------------------------------------------------------- */
 /* Outputs                                                                     */
@@ -258,7 +342,7 @@ backend.addOutput({
     buckets: activeClient.buckets.map((bucket) => ({
       id: bucket.id,
       bucketName: bucket.bucketName,
-      region: stack.region,
+      region: authStack.region,
     })),
   },
 });

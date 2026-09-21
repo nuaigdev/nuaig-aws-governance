@@ -35,6 +35,9 @@ import { defineFunction } from "@aws-amplify/backend";
  */
 export const adminGroupsFunction = defineFunction({
   name: "admin-groups",
+  // An AppSync resolver lives with the API that invokes it; placing it
+  // anywhere else creates a circular dependency between nested stacks.
+  resourceGroupName: "data",
   entry: "./handler.ts",
   timeoutSeconds: 30,
   memoryMB: 256,

@@ -1,4 +1,4 @@
-import { activeClient } from "../../../config";
+import { activeClient } from "../../../config/index";
 
 /**
  * Request/response contracts for the `manageUsers` mutation, plus the

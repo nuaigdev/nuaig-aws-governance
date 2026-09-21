@@ -7,7 +7,7 @@ import type { PostAuthenticationTriggerHandler } from "aws-lambda";
 // placeholder under .amplify/generated keeps a fresh clone typechecking.
 import { env } from "$amplify/env/post-authentication";
 
-import { activeClient } from "../../../config";
+import { activeClient } from "../../../config/index";
 import type { Schema } from "../../data/resource";
 import { writeAuditEvent } from "../shared/audit";
 import type { Caller } from "../shared/identity";

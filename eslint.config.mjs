@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Amplify deploy output: bundled Lambda assets written by `ampx`.
+    ".amplify/artifacts/**",
   ]),
 ]);
 

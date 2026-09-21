@@ -9,6 +9,9 @@ import { defineFunction } from "@aws-amplify/backend";
  */
 export const auditWriterFunction = defineFunction({
   name: "audit-writer",
+  // An AppSync resolver lives with the API that invokes it; placing it
+  // anywhere else creates a circular dependency between nested stacks.
+  resourceGroupName: "data",
   entry: "./handler.ts",
   // Short: one DynamoDB put. A longer ceiling would just hold a download's
   // logging call open during an outage.

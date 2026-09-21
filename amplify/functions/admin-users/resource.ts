@@ -11,6 +11,9 @@ import { defineFunction } from "@aws-amplify/backend";
  */
 export const adminUsersFunction = defineFunction({
   name: "admin-users",
+  // An AppSync resolver lives with the API that invokes it; placing it
+  // anywhere else creates a circular dependency between nested stacks.
+  resourceGroupName: "data",
   entry: "./handler.ts",
   // Listing users fans out to AdminListGroupsForUser per user. The ceiling is
   // sized for a pool larger than expected rather than for normal operation.

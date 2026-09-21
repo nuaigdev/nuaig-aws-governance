@@ -1,4 +1,4 @@
-import { activeClient } from "../../../config";
+import { activeClient } from "../../../config/index";
 import type { AccessMode } from "../../../config/types";
 
 /**

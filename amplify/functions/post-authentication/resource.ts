@@ -16,6 +16,9 @@ import { defineFunction } from "@aws-amplify/backend";
  */
 export const postAuthenticationFunction = defineFunction({
   name: "post-authentication",
+  // A Cognito trigger lives with the user pool that invokes it; placing it
+  // anywhere else creates a circular dependency between nested stacks.
+  resourceGroupName: "auth",
   entry: "./handler.ts",
   // This sits in the critical path of every sign-in. Keep it tight: if the
   // trigger is slow, every login is slow.

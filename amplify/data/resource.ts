@@ -1,6 +1,6 @@
 import { a, defineData, type ClientSchema } from "@aws-amplify/backend";
 
-import { activeClient } from "../../config";
+import { activeClient } from "../../config/index";
 import { adminGroupsFunction } from "../functions/admin-groups/resource";
 import { adminUsersFunction } from "../functions/admin-users/resource";
 import { auditWriterFunction } from "../functions/audit-writer/resource";

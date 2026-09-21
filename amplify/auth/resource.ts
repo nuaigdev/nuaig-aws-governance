@@ -1,6 +1,6 @@
 import { defineAuth } from "@aws-amplify/backend";
 
-import { activeClient } from "../../config";
+import { activeClient } from "../../config/index";
 import { postAuthenticationFunction } from "../functions/post-authentication/resource";
 
 /**

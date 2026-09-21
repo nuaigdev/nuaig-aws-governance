@@ -24,7 +24,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 
-import { activeClient } from "../config";
+import { activeClient } from "../config/index";
 
 const DRY_RUN = process.argv.includes("--dry-run");
 

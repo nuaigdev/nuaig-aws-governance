@@ -65,8 +65,16 @@ version.
 ## Buckets are retained
 
 Managed buckets are created without `autoDeleteObjects` and without
-`removalPolicy: DESTROY`. Tearing down the CloudFormation stack leaves the
-buckets and their contents intact.
+`removalPolicy: DESTROY`. For a branch deployment (`ampx pipeline-deploy`),
+tearing down the CloudFormation stack leaves the buckets and their contents
+intact.
+
+**Sandbox caveat, observed in practice:** an Amplify *sandbox* forces a DESTROY
+removal policy onto every resource, overriding the above. Deleting a sandbox
+stack therefore attempts to delete the buckets. It still cannot destroy data —
+S3 refuses to delete a bucket that holds any object version, and versioning is
+on — so the contents must be removed deliberately first. But a sandbox is not a
+place for real client data.
 
 ## If a future requirement seems to need deletion
 

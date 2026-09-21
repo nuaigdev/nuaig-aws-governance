@@ -7,8 +7,9 @@ import type { AppSyncResolverEvent } from "aws-lambda";
 // placeholder under .amplify/generated keeps a fresh clone typechecking.
 import { env } from "$amplify/env/audit-writer";
 
-import { activeClient } from "../../../config";
+import { activeClient } from "../../../config/index";
 import type { Schema } from "../../data/resource";
+import { withEmail } from "../shared/actor-email";
 import { writeAuditEvent } from "../shared/audit";
 import { resolveCaller, UnauthenticatedError } from "../shared/identity";
 
@@ -44,7 +45,7 @@ export const handler = async (
 ): Promise<boolean> => {
   let caller;
   try {
-    caller = resolveCaller(event);
+    caller = await withEmail(resolveCaller(event), env.AMPLIFY_AUTH_USERPOOL_ID);
   } catch (error) {
     if (error instanceof UnauthenticatedError) {
       // AppSync should never route an unauthenticated request here, since the

@@ -43,6 +43,27 @@ node --import tsx --test --test-name-pattern "never allows a destructive action"
   amplify/shared/bucket-policy.test.ts
 ```
 
+### Deploying a sandbox — known pitfalls (all hit in practice)
+
+- Run with `NEXT_PUBLIC_CLIENT_ID` set and `--profile <aws-profile>`; first use in a
+  region needs `npx cdk bootstrap aws://<account>/<region>`.
+- `amplify/` and `config/` each carry a `package.json` with `"type": "module"`. ampx
+  loads the backend through tsx as ESM; without them, imports outside `amplify/`
+  fail to resolve (on Windows, in a particularly confusing way). Import `config`
+  as `config/index`, never the bare directory.
+- Functions need an explicit `resourceGroupName` (`auth` for the Cognito trigger,
+  `data` for resolvers), and nothing in the auth stack may reference the data
+  stack — otherwise CloudFormation reports a circular dependency.
+- **Express mode trap.** For non-hotswappable changes, the sandbox falls back to a
+  CloudFormation *Express* update, which re-applies the user pool whenever the
+  post-authentication Lambda changes — and the user pool's update handler rejects
+  Amplify's schema ("Invalid AttributeDataType input"). A stack that fails in
+  Express mode can then only be updated in Express mode. Branch deployments use
+  standard mode and are unaffected. If a sandbox gets stuck this way, the
+  practical fix is `npm run sandbox:delete` and a fresh deploy.
+- Sandboxes force DESTROY on all resources, including the buckets — see
+  `docs/no-destructive-actions.md`.
+
 Tests are `node:test` + `node:assert/strict`, run through `tsx` — Node's own ESM
 resolver will not resolve the extensionless TS imports. Test files sit beside the code
 as `*.test.ts`.
@@ -58,8 +79,9 @@ would advertise access the infrastructure does not grant. Keep them on one imple
 
 **Two TypeScript projects.** The root `tsconfig.json` excludes `amplify/`, which has its
 own (Node/CDK target, plus the `$amplify/*` path). `npm run typecheck` checks both.
-Placeholders for the `$amplify/env/*` modules that `ampx` generates at deploy time are
-checked in under `.amplify/generated/env/` so a fresh clone typechecks before any deploy.
+The `$amplify/env/*` modules that `ampx` generates at deploy time are checked in under
+`.amplify/generated/env/` (type definitions only, nothing account-specific) so a fresh
+clone typechecks before any deploy; ampx overwrites them on each deploy.
 `amplify_outputs.json` is gitignored; `scripts/ensure-amplify-outputs.mjs` writes a
 marked placeholder on `predev`/`prebuild` so the app builds, and fails loudly at runtime
 instead of erroring opaquely on the first network call.

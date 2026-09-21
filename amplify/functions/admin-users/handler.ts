@@ -20,8 +20,9 @@ import type { AppSyncResolverEvent } from "aws-lambda";
 // placeholder under .amplify/generated keeps a fresh clone typechecking.
 import { env } from "$amplify/env/admin-users";
 
-import { activeClient } from "../../../config";
+import { activeClient } from "../../../config/index";
 import type { Schema } from "../../data/resource";
+import { withEmail } from "../shared/actor-email";
 import { writeAuditEvent } from "../shared/audit";
 import { resolveCaller } from "../shared/identity";
 import {
@@ -43,7 +44,7 @@ const USER_POOL_ID = env.AMPLIFY_AUTH_USERPOOL_ID;
 export const handler = async (
   event: AppSyncResolverEvent<{ operation: string; payload: unknown }>,
 ): Promise<unknown> => {
-  const caller = resolveCaller(event);
+  const caller = await withEmail(resolveCaller(event), USER_POOL_ID);
 
   // AppSync already enforces the admin group on this mutation. Re-checking
   // here means the handler is still safe if that binding is ever loosened, and
