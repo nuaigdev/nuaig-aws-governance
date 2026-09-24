@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { activeClient } from "@config/index";
 import { describeMode } from "@config/access";
-import { Badge, EmptyState } from "@/components/ui";
+import { Badge, Card, EmptyState, Table, TableWrap } from "@/components/ui";
 import { useSession } from "@/lib/auth/SessionProvider";
 
 import styles from "./Buckets.module.css";
@@ -32,39 +32,45 @@ export default function BucketsPage() {
           to a group that covers the data you need.
         </EmptyState>
       ) : (
-        <div className={styles.grid}>
-          {buckets.map(({ bucket, mode, viaGroups }) => (
-            <Link
-              key={bucket.id}
-              href={`/buckets/${bucket.id}`}
-              className={styles.bucketCard}
-            >
-              <div className={styles.bucketTop}>
-                <span className={styles.bucketLabel}>{bucket.label}</span>
-                {bucket.sensitivity === "sensitive" && (
-                  <Badge tone="warning">Sensitive</Badge>
-                )}
-              </div>
-
-              <p className={styles.bucketDescription}>{bucket.description}</p>
-
-              <div className={styles.bucketMeta}>
-                <Badge tone={mode === "read-upload" ? "primary" : "neutral"}>
-                  {describeMode(mode)}
-                </Badge>
-                <span className={styles.bucketName} title="S3 bucket">
-                  {bucket.bucketName}
-                </span>
-              </div>
-
-              <span className="muted" style={{ fontSize: "0.75rem" }}>
-                {viaGroups.length === 1
-                  ? `Via your ${groupLabel(viaGroups[0])} membership`
-                  : `Via ${viaGroups.map(groupLabel).join(" and ")}`}
-              </span>
-            </Link>
-          ))}
-        </div>
+        <Card flush>
+          <TableWrap>
+            <Table>
+              <thead>
+                <tr>
+                  <th scope="col">Bucket</th>
+                  <th scope="col">Access</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">Through</th>
+                </tr>
+              </thead>
+              <tbody>
+                {buckets.map(({ bucket, mode, viaGroups }) => (
+                  <tr key={bucket.id}>
+                    <td>
+                      <Link href={`/buckets/${bucket.id}`} className={styles.bucketLink}>
+                        {bucket.label}
+                      </Link>
+                      <div className={styles.bucketDescription}>{bucket.description}</div>
+                    </td>
+                    <td>
+                      <Badge tone={mode === "read-upload" ? "primary" : "neutral"}>
+                        {describeMode(mode)}
+                      </Badge>
+                    </td>
+                    <td>
+                      {bucket.sensitivity === "sensitive" ? (
+                        <Badge tone="warning">Sensitive</Badge>
+                      ) : (
+                        <span className="muted">Standard</span>
+                      )}
+                    </td>
+                    <td className="muted">{viaGroups.map(groupLabel).join(", ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </TableWrap>
+        </Card>
       )}
     </>
   );

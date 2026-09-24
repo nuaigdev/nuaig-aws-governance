@@ -1,7 +1,8 @@
 "use client";
 
-import { notFound, useParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { notFound, useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { activeClient } from "@config/index";
 import { describeMode } from "@config/access";
@@ -18,6 +19,8 @@ import {
   type SortDirection,
 } from "@/components/ui";
 import { useSession } from "@/lib/auth/SessionProvider";
+import { parsePrefix } from "@/lib/storage/keys";
+import { SENSITIVE_BUCKET_NOTICE, UPLOAD_NOTICE } from "@/lib/notices";
 import { fileExtension, formatBytes, formatDateTime, pluralise } from "@/lib/format";
 import {
   AccessDeniedError,
@@ -39,15 +42,35 @@ interface ActiveUpload {
   message?: string;
 }
 
+/** `useSearchParams` needs a Suspense boundary in the App Router. */
 export default function BucketBrowserPage() {
+  return (
+    <Suspense fallback={null}>
+      <BucketBrowser />
+    </Suspense>
+  );
+}
+
+function BucketBrowser() {
   const params = useParams<{ bucketId: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { session } = useSession();
 
   const bucketId = params.bucketId;
   const bucket = activeClient.buckets.find((b) => b.id === bucketId);
   const access = session?.buckets.find((entry) => entry.bucket.id === bucketId);
 
-  const [prefix, setPrefix] = useState("");
+  // The current folder lives in the URL, so refresh, back/forward and shared
+  // links all land in the same place.
+  const prefix = parsePrefix(searchParams.get("path"));
+  const setPrefix = useCallback(
+    (next: string) => {
+      const base = `/buckets/${params.bucketId}`;
+      router.push(next === "" ? base : `${base}?path=${encodeURIComponent(next)}`);
+    },
+    [router, params.bucketId],
+  );
   const [entries, setEntries] = useState<StorageEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -223,36 +246,22 @@ export default function BucketBrowserPage() {
 
   return (
     <>
-      <PageHeading
-        bucketLabel={bucket.label}
-        sensitivity={bucket.sensitivity}
-        mode={describeMode(access.mode)}
-        description={bucket.description}
-        bucketName={bucket.bucketName}
-        actions={
-          canUploadHere ? (
-            <Button variant="primary" onClick={() => fileInputRef.current?.click()}>
-              Upload files
-            </Button>
-          ) : null
-        }
-      />
-
-      {bucket.sensitivity === "sensitive" && (
-        <div className={styles.noticeStack}>
-          <Message tone="info">
-            This bucket holds sensitive records. Downloads are logged against your
-            account. Handle the contents under {activeClient.displayName}&rsquo;s
-            data-protection policy.
-          </Message>
-        </div>
-      )}
-
-      {/* Breadcrumbs */}
-      <nav className={styles.breadcrumbs} aria-label="Folder path">
-        <button type="button" className={styles.crumb} onClick={() => setPrefix("")}>
-          {bucket.bucketName}
-        </button>
+      <nav className={styles.breadcrumbs} aria-label="Location">
+        <Link href="/buckets" className={styles.crumb}>
+          Buckets
+        </Link>
+        <span className={styles.crumbSeparator} aria-hidden="true">
+          /
+        </span>
+        {segments.length === 0 ? (
+          <span className={styles.crumbCurrent} aria-current="page">
+            {bucket.label}
+          </span>
+        ) : (
+          <button type="button" className={styles.crumb} onClick={() => setPrefix("")}>
+            {bucket.label}
+          </button>
+        )}
         {segments.map((segment, index) => {
           const isLast = index === segments.length - 1;
           const target = `${segments.slice(0, index + 1).join("/")}/`;
@@ -278,6 +287,28 @@ export default function BucketBrowserPage() {
           );
         })}
       </nav>
+
+      <PageHeading
+        bucketLabel={bucket.label}
+        sensitivity={bucket.sensitivity}
+        mode={describeMode(access.mode)}
+        description={bucket.description}
+        bucketName={bucket.bucketName}
+        actions={
+          canUploadHere ? (
+            <Button variant="primary" onClick={() => fileInputRef.current?.click()}>
+              Upload files
+            </Button>
+          ) : null
+        }
+      />
+
+      {bucket.sensitivity === "sensitive" && (
+        <div className={styles.noticeStack}>
+          <Message tone="info">{SENSITIVE_BUCKET_NOTICE}</Message>
+        </div>
+      )}
+
 
       {error && (
         <div className={styles.noticeStack}>
@@ -315,8 +346,8 @@ export default function BucketBrowserPage() {
               Choose files
             </Button>
             <p className={styles.dropHint}>
-              or drop them here. Uploads never replace an existing file — a name
-              clash is stored alongside the original.
+              or drop them here. {UPLOAD_NOTICE} A file whose name already exists
+              is stored alongside the original, never over it.
             </p>
           </div>
         </>
@@ -437,8 +468,8 @@ export default function BucketBrowserPage() {
                             type="button"
                             className={styles.folderLink}
                             onClick={() => {
-                              setPrefix(entry.key);
                               setSearch("");
+                              setPrefix(entry.key);
                             }}
                           >
                             {entry.name}

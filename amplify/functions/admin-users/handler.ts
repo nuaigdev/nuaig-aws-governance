@@ -3,8 +3,10 @@ import {
   AdminCreateUserCommand,
   AdminDisableUserCommand,
   AdminEnableUserCommand,
+  AdminGetUserCommand,
   AdminListGroupsForUserCommand,
   AdminRemoveUserFromGroupCommand,
+  AdminResetUserPasswordCommand,
   AdminUserGlobalSignOutCommand,
   CognitoIdentityProviderClient,
   ListUsersCommand,
@@ -79,6 +81,9 @@ export const handler = async (
 
       case "resendInvite":
         return await resendInvite(request.username, caller);
+
+      case "resetPassword":
+        return await resetPassword(request.username, caller);
     }
   } catch (error) {
     if (error instanceof OperationError) {
@@ -302,6 +307,55 @@ async function resendInvite(username: string, caller: ReturnType<typeof resolveC
   });
 
   return { username, invitationResent: true };
+}
+
+/**
+ * Starts a password reset for a user who has forgotten theirs.
+ *
+ * The admin never sees, sets or chooses the new password. Cognito emails the
+ * user a one-time code, and the portal's sign-in page has them choose a new
+ * password with it — so no credential ever passes through an administrator.
+ * MFA is untouched: the user still needs their authenticator afterwards.
+ *
+ * Existing sessions are revoked, because a reset is usually requested when an
+ * account may be in the wrong hands.
+ */
+async function resetPassword(username: string, caller: ReturnType<typeof resolveCaller>) {
+  const user = await cognito.send(
+    new AdminGetUserCommand({ UserPoolId: USER_POOL_ID, Username: username }),
+  );
+
+  if (!user.Enabled) {
+    throw new OperationError(
+      `This account is disabled. Re-enable it before resetting the password.`,
+    );
+  }
+
+  // A user who has never signed in has only a temporary password, and Cognito
+  // refuses to reset it. The right action there is a fresh invitation.
+  if (user.UserStatus === "FORCE_CHANGE_PASSWORD") {
+    throw new OperationError(
+      `This user has not signed in yet, so there is no password to reset. ` +
+        `Use "Resend invite" to send them a new temporary password.`,
+    );
+  }
+
+  await cognito.send(
+    new AdminResetUserPasswordCommand({ UserPoolId: USER_POOL_ID, Username: username }),
+  );
+
+  await cognito.send(
+    new AdminUserGlobalSignOutCommand({ UserPoolId: USER_POOL_ID, Username: username }),
+  );
+
+  await writeAuditEvent(data, activeClient.clientId, caller, {
+    action: "USER_PASSWORD_RESET",
+    outcome: "SUCCESS",
+    targetUser: username,
+    detail: { sessionsRevoked: true },
+  });
+
+  return { username, passwordResetStarted: true };
 }
 
 /* -------------------------------------------------------------------------- */

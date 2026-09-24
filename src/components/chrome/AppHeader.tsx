@@ -13,9 +13,9 @@ import { UserMenu } from "./UserMenu";
 /**
  * Header navigation. There is no sidebar in this app, by design.
  *
- * The identity block reads "Nuaig | <client>" so it is always clear whose data
- * is on screen — the portal hosts a different client per deployment, and a
- * screenshot with no client name in it is ambiguous.
+ * The identity block is the client's alone — logo, or display name as text when
+ * no logo has been supplied. Nuaig appears only in the footer, so it is always
+ * clear whose data is on screen.
  */
 export function AppHeader() {
   const pathname = usePathname();
@@ -36,22 +36,14 @@ export function AppHeader() {
     <header className={styles.header}>
       <div className={styles.inner}>
         <Link href="/buckets" className={styles.identity}>
-          <Image
-            src="/branding/nuaig-logo.svg"
-            alt="Nuaig"
-            width={130}
-            height={54}
-            className={styles.logo}
-            priority
-          />
-          <span className={styles.divider} aria-hidden="true" />
           {activeClient.logo ? (
             <Image
               src={activeClient.logo}
               alt={activeClient.displayName}
-              width={160}
-              height={40}
+              width={200}
+              height={48}
               className={styles.clientLogo}
+              priority
             />
           ) : (
             <span className={styles.clientName}>{activeClient.displayName}</span>

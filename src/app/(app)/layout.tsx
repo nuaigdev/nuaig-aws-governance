@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { AppHeader } from "@/components/chrome/AppHeader";
+import { IdleSignOut } from "@/components/chrome/IdleSignOut";
 import { Message } from "@/components/ui";
 import { useSession } from "@/lib/auth/SessionProvider";
 
@@ -58,6 +59,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </main>
       <AppFooter />
+      <IdleSignOut />
     </>
   );
 }

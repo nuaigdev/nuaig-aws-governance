@@ -15,6 +15,7 @@
     "test:watch": "node --import tsx --test --watch \"config/**/*.test.ts\" \"amplify/**/*.test.ts\" \"src/**/*.test.ts\"",
     "sandbox": "ampx sandbox",
     "seed:showcase": "tsx scripts/seed-showcase-data.ts",
+    "prepare:buckets": "tsx scripts/prepare-buckets.ts",
     "sandbox:delete": "ampx sandbox delete",
     "verify": "npm run typecheck && npm run lint && npm run test"
   },

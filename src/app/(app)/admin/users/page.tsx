@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { activeClient } from "@config/index";
+import { describeMode, grantedBuckets } from "@config/access";
 import {
   Badge,
   Button,
@@ -25,6 +26,7 @@ import {
   enableUser,
   listUsers,
   resendInvite,
+  resetUserPassword,
   setUserGroups,
   type PortalUser,
 } from "@/lib/admin";
@@ -55,6 +57,7 @@ export default function UsersPage() {
   const [busyUser, setBusyUser] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<PortalUser | null>(null);
+  const [resetting, setResetting] = useState<PortalUser | null>(null);
 
   async function run(username: string, action: () => Promise<unknown>, success: string) {
     setBusyUser(username);
@@ -272,6 +275,16 @@ export default function UsersPage() {
                               Resend invite
                             </Button>
                           )}
+                          {user.enabled && !isPending(user) && (
+                            <Button
+                              small
+                              variant="ghost"
+                              disabled={busyUser === user.username}
+                              onClick={() => setResetting(user)}
+                            >
+                              Reset password
+                            </Button>
+                          )}
                           {user.enabled ? (
                             <Button
                               small
@@ -324,6 +337,31 @@ export default function UsersPage() {
         />
       )}
 
+      {resetting && (
+        <Dialog
+          title={`Reset password for ${resetting.email}?`}
+          onClose={() => setResetting(null)}
+          busy={false}
+          confirmLabel="Reset password"
+          canConfirm
+          onConfirm={async () => {
+            const target = resetting;
+            setResetting(null);
+            await run(
+              target.username,
+              () => resetUserPassword(target.username),
+              `A password reset code was emailed to ${target.email}. They will choose a new password the next time they sign in.`,
+            );
+          }}
+        >
+          <p style={{ fontSize: "0.9375rem" }}>
+            We will email {resetting.givenName || "the user"} a one-time code and
+            sign them out of every device. You never see or set their password,
+            and their two-factor authentication is unchanged.
+          </p>
+        </Dialog>
+      )}
+
       {editing && (
         <EditGroupsDialog
           user={editing}
@@ -341,6 +379,25 @@ export default function UsersPage() {
 
 /* -------------------------------------------------------------- Dialogs -- */
 
+type CreateStep = "details" | "access" | "review";
+
+const CREATE_STEPS: readonly { id: CreateStep; label: string }[] = [
+  { id: "details", label: "Details" },
+  { id: "access", label: "Access" },
+  { id: "review", label: "Review" },
+];
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** What a group lets its members do, in words an administrator can check. */
+function describeGroupAccess(groupId: string): string[] {
+  const group = activeClient.groups.find((candidate) => candidate.id === groupId);
+  if (!group) return [];
+  return grantedBuckets(activeClient, group).map(
+    ({ bucket, mode }) => `${bucket.label}: ${describeMode(mode)}`,
+  );
+}
+
 function CreateUserDialog({
   onClose,
   onCreated,
@@ -352,19 +409,18 @@ function CreateUserDialog({
   const givenId = useId();
   const familyId = useId();
 
+  const [step, setStep] = useState<CreateStep>("details");
   const [email, setEmail] = useState("");
   const [givenName, setGivenName] = useState("");
   const [familyName, setFamilyName] = useState("");
   const [groups, setGroups] = useState<string[]>([]);
+  const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit =
-    email.trim() !== "" &&
-    givenName.trim() !== "" &&
-    familyName.trim() !== "" &&
-    groups.length > 0 &&
-    !busy;
+  const emailValid = EMAIL_PATTERN.test(email.trim());
+  const emailInvalid = touched && email.trim() !== "" && !emailValid;
+  const detailsValid = emailValid && givenName.trim() !== "" && familyName.trim() !== "";
 
   async function submit() {
     setBusy(true);
@@ -379,60 +435,124 @@ function CreateUserDialog({
     }
   }
 
+  const index = CREATE_STEPS.findIndex((candidate) => candidate.id === step);
+
   return (
     <Dialog
       title="Create user"
       onClose={onClose}
       busy={busy}
-      confirmLabel="Create and send invitation"
-      canConfirm={canSubmit}
-      onConfirm={submit}
+      confirmLabel={step === "review" ? "Create and send invitation" : "Continue"}
+      canConfirm={
+        !busy && (step === "details" ? detailsValid : step === "access" ? groups.length > 0 : true)
+      }
+      onBack={step === "details" ? undefined : () => setStep(CREATE_STEPS[index - 1].id)}
+      onConfirm={() => {
+        if (step === "review") return submit();
+        setStep(CREATE_STEPS[index + 1].id);
+      }}
     >
+      <ol className={styles.stepper} aria-label="Progress">
+        {CREATE_STEPS.map((candidate, position) => (
+          <li
+            key={candidate.id}
+            className={`${styles.stepperItem} ${position === index ? styles.stepperCurrent : ""} ${position < index ? styles.stepperDone : ""}`}
+            aria-current={position === index ? "step" : undefined}
+          >
+            <span className={styles.stepperNumber}>{position + 1}</span>
+            {candidate.label}
+          </li>
+        ))}
+      </ol>
+
       {error && <Message tone="error">{error}</Message>}
 
-      <p className="muted" style={{ fontSize: "0.875rem" }}>
-        Cognito emails a temporary password valid for 3 days. On first sign-in
-        they must set a password and enrol in two-factor authentication.
-      </p>
+      {step === "details" && (
+        <>
+          <Field
+            label="Email address"
+            htmlFor={emailId}
+            hint="The invitation is sent here, and it becomes their sign-in name."
+            error={emailInvalid ? "Enter a valid email address." : null}
+          >
+            <TextInput
+              id={emailId}
+              type="email"
+              required
+              autoFocus
+              value={email}
+              invalid={emailInvalid}
+              onChange={(event) => setEmail(event.target.value)}
+              onBlur={() => setTouched(true)}
+              disabled={busy}
+            />
+          </Field>
 
-      <Field label="Email address" htmlFor={emailId}>
-        <TextInput
-          id={emailId}
-          type="email"
-          required
-          autoFocus
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          <Field label="First name" htmlFor={givenId}>
+            <TextInput
+              id={givenId}
+              required
+              value={givenName}
+              onChange={(event) => setGivenName(event.target.value)}
+              disabled={busy}
+            />
+          </Field>
+
+          <Field label="Last name" htmlFor={familyId}>
+            <TextInput
+              id={familyId}
+              required
+              value={familyName}
+              onChange={(event) => setFamilyName(event.target.value)}
+              disabled={busy}
+            />
+          </Field>
+        </>
+      )}
+
+      {step === "access" && (
+        <GroupPicker
+          selected={groups}
+          onChange={setGroups}
           disabled={busy}
+          hint="Choose at least one group. Membership is the only way access is granted."
         />
-      </Field>
+      )}
 
-      <Field label="First name" htmlFor={givenId}>
-        <TextInput
-          id={givenId}
-          required
-          value={givenName}
-          onChange={(event) => setGivenName(event.target.value)}
-          disabled={busy}
-        />
-      </Field>
-
-      <Field label="Last name" htmlFor={familyId}>
-        <TextInput
-          id={familyId}
-          required
-          value={familyName}
-          onChange={(event) => setFamilyName(event.target.value)}
-          disabled={busy}
-        />
-      </Field>
-
-      <GroupPicker
-        selected={groups}
-        onChange={setGroups}
-        disabled={busy}
-        hint="A user must belong to at least one group — membership is the only way access is granted."
-      />
+      {step === "review" && (
+        <div className={styles.review}>
+          <dl className={styles.reviewList}>
+            <div>
+              <dt>Name</dt>
+              <dd>{`${givenName.trim()} ${familyName.trim()}`}</dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd className="data">{email.trim().toLowerCase()}</dd>
+            </div>
+            <div>
+              <dt>Groups</dt>
+              <dd>
+                {groups.map((groupId) => (
+                  <div key={groupId} className={styles.reviewGroup}>
+                    <strong>{groupLabel(groupId)}</strong>
+                    <ul>
+                      {describeGroupAccess(groupId).map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </dd>
+            </div>
+          </dl>
+          <p className="muted" style={{ fontSize: "0.875rem" }}>
+            An invitation with a temporary password (valid for 3 days) will be
+            emailed to this address. On first sign-in they set their own password
+            and enrol in two-factor authentication.
+          </p>
+        </div>
+      )}
     </Dialog>
   );
 }
@@ -534,6 +654,15 @@ function GroupPicker({
               <span className={styles.checkboxHint} style={{ display: "block" }}>
                 {group.description}
               </span>
+              {describeGroupAccess(group.id).map((line) => (
+                <span
+                  key={line}
+                  className={`${styles.checkboxHint} data`}
+                  style={{ display: "block" }}
+                >
+                  {line}
+                </span>
+              ))}
             </span>
           </label>
         ))}
@@ -548,6 +677,7 @@ function Dialog({
   children,
   onClose,
   onConfirm,
+  onBack,
   confirmLabel,
   canConfirm,
   busy,
@@ -556,6 +686,8 @@ function Dialog({
   children: React.ReactNode;
   onClose: () => void;
   onConfirm: () => void | Promise<void>;
+  /** Shows a Back button before Cancel, for the multi-step create flow. */
+  onBack?: () => void;
   confirmLabel: string;
   canConfirm: boolean;
   busy: boolean;
@@ -580,6 +712,11 @@ function Dialog({
       </header>
       <div className="dialogBody">{children}</div>
       <footer className="dialogFooter">
+        {onBack && (
+          <Button variant="ghost" onClick={onBack} disabled={busy}>
+            Back
+          </Button>
+        )}
         <Button onClick={onClose} disabled={busy}>
           Cancel
         </Button>

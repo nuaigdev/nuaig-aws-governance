@@ -17,6 +17,10 @@ import {
 
 import { activeClient } from "../config/index";
 import { grantedBuckets } from "../config/access";
+import {
+  ACCESS_TOKEN_MINUTES,
+  REFRESH_TOKEN_HOURS,
+} from "../config/session";
 import { auth } from "./auth/resource";
 import { data } from "./data/resource";
 import { adminGroupsFunction } from "./functions/admin-groups/resource";
@@ -237,6 +241,21 @@ cfnUserPool.policies = {
   },
 };
 
+/**
+ * Token lifetimes, from `config/session.ts` so the UI's idle timeout and the
+ * pool agree. Short access/ID tokens mean a revoked or stolen token is useful
+ * for minutes, not hours; the refresh token caps an unbroken session.
+ */
+const cfnUserPoolClient = backend.auth.resources.cfnResources.cfnUserPoolClient;
+cfnUserPoolClient.accessTokenValidity = ACCESS_TOKEN_MINUTES;
+cfnUserPoolClient.idTokenValidity = ACCESS_TOKEN_MINUTES;
+cfnUserPoolClient.refreshTokenValidity = REFRESH_TOKEN_HOURS;
+cfnUserPoolClient.tokenValidityUnits = {
+  accessToken: "minutes",
+  idToken: "minutes",
+  refreshToken: "hours",
+};
+
 // Admins create every user. Nobody self-registers into a client's data portal.
 cfnUserPool.adminCreateUserConfig = {
   allowAdminCreateUserOnly: true,
@@ -253,6 +272,7 @@ adminUsersLambda.addToRolePolicy(
       "cognito-idp:AdminGetUser",
       "cognito-idp:AdminEnableUser",
       "cognito-idp:AdminDisableUser",
+      "cognito-idp:AdminResetUserPassword",
       "cognito-idp:AdminUserGlobalSignOut",
       "cognito-idp:AdminAddUserToGroup",
       "cognito-idp:AdminRemoveUserFromGroup",

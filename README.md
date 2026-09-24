@@ -63,6 +63,7 @@ npm run seed:showcase
 | `npm test` | Tests only |
 | `npm run sandbox` | Deploy a personal Amplify backend |
 | `npm run seed:showcase` | Write synthetic sample files to the showcase buckets |
+| `npm run prepare:buckets` | Enable versioning and add the portal's CORS rule on a client's existing buckets (`--account <id>` required; `--dry-run` first) |
 
 ## Onboarding a new client
 
@@ -83,14 +84,18 @@ exist — or a missing admin group — fails the build rather than the deploymen
   why runtime IAM editing was chosen, and the guardrails that bound it
 - [`docs/audit-coverage.md`](docs/audit-coverage.md) — what the audit log covers,
   and the gaps it does not
+- [`docs/deployment-plan.md`](docs/deployment-plan.md) — the client deployment
+  runbook, including what the client must provide
+- [`docs/administrator-guide.md`](docs/administrator-guide.md) — handed to the
+  client's administrator
 - [`CLAUDE.md`](CLAUDE.md) — project instructions and architecture notes
 
 ## Decisions a real deployment still needs
 
 These are flagged rather than assumed:
 
-- **Session duration.** Cognito defaults are in place; no explicit token
-  lifetimes have been set.
+- **Session duration.** Set in `config/session.ts`: 30-minute access tokens,
+  12-hour refresh, 30-minute idle sign-out.
 - **Invitation email content.** Currently Cognito's default template.
 - **Audit retention.** The log is append-only with no expiry; retention is a
   lifecycle decision on the DynamoDB table.

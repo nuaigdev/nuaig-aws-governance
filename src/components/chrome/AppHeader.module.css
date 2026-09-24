@@ -16,37 +16,18 @@
   gap: var(--space-5);
 }
 
-/* Identity block: our logo, a divider, the client's name. */
+/* Identity block: the client's logo, or their name as text. */
 .identity {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
   flex-shrink: 0;
   text-decoration: none;
   color: inherit;
 }
 
-.logo {
-  display: block;
-  height: 26px;
-  width: auto;
-}
-
-/**
- * The divider is a bordered element, never a typed glyph character. A glyph
- * risks rendering as tofu on a machine without the right font, and would not
- * scale with the header.
- */
-.divider {
-  width: 1px;
-  height: 22px;
-  background: var(--border-strong);
-  flex-shrink: 0;
-}
-
 .clientName {
-  font-weight: 500;
-  font-size: 0.9375rem;
+  font-weight: 600;
+  font-size: 1.0625rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -54,9 +35,9 @@
 
 .clientLogo {
   display: block;
-  height: 24px;
+  height: 32px;
   width: auto;
-  max-width: 160px;
+  max-width: 220px;
 }
 
 .nav {

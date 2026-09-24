@@ -22,7 +22,8 @@ interface SessionContextValue {
   readonly isAdmin: boolean;
   /** Re-reads the session. Pass `true` after anything that could change groups. */
   readonly refresh: (forceTokenRefresh?: boolean) => Promise<void>;
-  readonly signOut: () => Promise<void>;
+  /** `"idle"` sends the user to sign-in with an explanation. */
+  readonly signOut: (reason?: "idle") => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -63,12 +64,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     };
   }, [refresh]);
 
-  const signOut = useCallback(async () => {
-    await amplifySignOut();
-    setSession(null);
-    setStatus("unauthenticated");
-    router.push("/sign-in");
-  }, [router]);
+  const signOut = useCallback(
+    async (reason?: "idle") => {
+      await amplifySignOut();
+      setSession(null);
+      setStatus("unauthenticated");
+      router.push(reason === "idle" ? "/sign-in?reason=idle" : "/sign-in");
+    },
+    [router],
+  );
 
   const value = useMemo<SessionContextValue>(
     () => ({

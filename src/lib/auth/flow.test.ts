@@ -149,3 +149,17 @@ describe("normaliseTotpCode", () => {
     assert.equal(normaliseTotpCode("1234567890"), "123456");
   });
 });
+
+describe("describeAuthError: password reset", () => {
+  it("keeps the Cognito code so the sign-in page can start the reset flow", () => {
+    const error = describeAuthError({ name: "PasswordResetRequiredException" });
+    assert.equal(error.code, "PasswordResetRequiredException");
+  });
+
+  it("does not reveal whether an account exists", () => {
+    assert.equal(
+      describeAuthError({ name: "UserNotFoundException" }).message,
+      describeAuthError({ name: "NotAuthorizedException" }).message,
+    );
+  });
+});

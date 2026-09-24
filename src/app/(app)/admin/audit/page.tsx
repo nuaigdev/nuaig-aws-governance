@@ -79,6 +79,7 @@ const ACTION_GROUPS: Record<string, readonly string[]> = {
     "USER_REENABLED",
     "USER_GROUPS_CHANGED",
     "USER_INVITE_RESENT",
+    "USER_PASSWORD_RESET",
     "GROUP_ACCESS_VIEWED",
     "GROUP_ACCESS_CHANGED",
   ],

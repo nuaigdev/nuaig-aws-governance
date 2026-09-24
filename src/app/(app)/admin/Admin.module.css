@@ -179,3 +179,83 @@
   padding: var(--space-4);
   border-top: 1px solid var(--border);
 }
+
+/* Create-user stepper */
+
+.stepper {
+  list-style: none;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  display: flex;
+  gap: var(--space-4);
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}
+
+.stepperItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stepperNumber {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.stepperCurrent {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.stepperCurrent .stepperNumber,
+.stepperDone .stepperNumber {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* Review step */
+
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.reviewList {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.reviewList > div {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.reviewList dt {
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+}
+
+.reviewList dd {
+  margin: 0;
+  font-size: 0.9375rem;
+}
+
+.reviewGroup ul {
+  margin: 2px 0 var(--space-2);
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+}

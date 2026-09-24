@@ -33,6 +33,7 @@ npm test                     # node:test via tsx
 npm run sandbox              # ampx sandbox — deploys a personal backend
 npm run sandbox:delete
 npm run seed:showcase        # synthetic sample files; add --dry-run to preview
+npm run prepare:buckets      # client's existing buckets: versioning + CORS (--dry-run first)
 ```
 
 Run a single test file, or one test by name:
@@ -177,12 +178,13 @@ See **Critical constraint** below.
 
 - Company logo assets are provided: `nuaig-logo.svg` (color, for light surfaces) and
   `nuaig-logo-white.svg` (white, for dark surfaces). Place both under `public/branding/`.
-- Header: our logo on the left, a subtle vertical divider, then the active client's
-  `displayName` (e.g. "Nuaig | Acme Senior Living") — this makes clear whose data the
-  viewer is looking at, since the app will host multiple clients over time. The divider is
-  a CSS `border-left` on a spacer element, never a typed glyph character — a glyph risks
-  rendering as tofu and does not scale with the header.
-- Footer (dark band, uses the white logo variant): our logo, one line — "Built and
+- Header: the active client's logo on the left (or, if the client has not supplied
+  one, their `displayName` as styled text), primary nav, user menu on the right.
+  **No Nuaig logo and no divider in the header** — the header is the client's.
+- Login page: the client's logo (or `displayName` text) is the primary mark; Nuaig
+  appears only in the page footer.
+- Footer (dark band, uses the white logo variant, on every page including sign-in):
+  our logo — linking to https://nuaig.ai in a new tab (`rel="noopener noreferrer"`) — one line — "Built and
   managed by Nuaig for [Client displayName]" — plus a copyright line. Keep it to one row,
   no link farm, no filler columns.
 - Never invent a client logo or name; if a client hasn't supplied a logo, show their
@@ -222,6 +224,36 @@ tool, and a table is the correct density for that job.
 buttons, active states, focus rings) against an otherwise quiet, neutral interface. Don't
 decorate beyond that. No gradients, no drop-shadows-on-everything, no unnecessary badges.
 
+## Deployment readiness
+
+Status of the path to a client deployment. Keep this current — the point is that
+deployment day needs no assessment.
+
+- **Runbook:** `docs/deployment-plan.md` is the single source. It covers what the
+  client must provide (no AWS knowledge required of them), bucket preparation,
+  deployment steps with a check after each, the smoke test, and handover.
+- **Deployment model:** the client has no AWS admin. They provision one temporary
+  admin identity; Nuaig deploys and the client then deletes it. The client's four
+  buckets already exist — `bucketProvisioning: "existing"`, **never created**.
+- **Hosting:** Amplify Hosting on the default `amplifyapp.com` URL (managed HTTPS).
+  No custom domain, no certificate work.
+- **Bucket preparation is scripted:** `npm run prepare:buckets` (use `--dry-run`
+  first). It enables versioning and merges in the portal's CORS rule on the
+  client's imported buckets, and reports public-access / SSL status without
+  changing them. It never deletes, never writes objects, never touches bucket
+  policy or encryption. It needs the live URL, so it runs after the first build.
+- **Scope decisions made with the client (do not re-litigate):** buckets are not
+  encrypted with KMS; uploads are rare, so no upload size/type limits or
+  overwrite-race work beyond versioning; no Cognito advanced security; no custom
+  domain; compliance is covered by the existing BAA, so notices are generic and
+  platform-level, not client-authored legal text.
+- **Sessions:** 30 min idle sign-out in the UI, short access tokens, 12 h refresh.
+- **Admin password reset** exists (Users page → Reset password), audited as
+  `USER_PASSWORD_RESET`.
+- **Before go-live checklist:** `npm run verify` green; client config registered
+  with the real bucket names; client logo in `public/branding/` (or accepted as
+  text); `docs/deployment-plan.md` Part C followed in order.
+
 ## Roles and groups (define from the start)
 
 Every client config always includes an `admin` group with access to all buckets, plus
@@ -255,6 +287,14 @@ direct console/CLI action by whoever manages the AWS account), never through thi
 Uploads must never overwrite an existing key silently — reject or auto-version on
 collision. Flag in code review if any planned feature would introduce a delete/overwrite
 path, rather than assuming it's fine because a role is "trusted."
+
+## Data-protection notices
+
+Short, generic and platform-level — the client does not author them and there is
+no Privacy Notice / Acceptable Use page. Placement: sign-in page (authorised use,
+activity logged), a slim banner above `sensitive` buckets, the upload dialog
+(only upload what you are authorised to share; nothing can be deleted afterwards),
+and one line in the footer. Copy lives in `src/lib/notices.ts`, not inline.
 
 ## Mock data for our internal showcase
 

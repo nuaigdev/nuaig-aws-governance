@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { joinKey, nextAvailableKey, sanitiseFileName, splitExtension } from "./keys";
+import {
+  joinKey,
+  nextAvailableKey,
+  parsePrefix,
+  sanitiseFileName,
+  splitExtension,
+} from "./keys";
 
 /** Builds an `exists` probe over a fixed set of keys, recording what was asked. */
 function bucket(existing: string[]) {
@@ -143,5 +149,24 @@ describe("joinKey", () => {
 
   it("puts a root-level file at the root", () => {
     assert.equal(joinKey("", "a.pdf"), "a.pdf");
+  });
+});
+
+describe("parsePrefix", () => {
+  it("treats a missing or empty path as the bucket root", () => {
+    assert.equal(parsePrefix(null), "");
+    assert.equal(parsePrefix(""), "");
+    assert.equal(parsePrefix("/"), "");
+  });
+
+  it("normalises to a trailing slash and no leading slash", () => {
+    assert.equal(parsePrefix("reports/2025"), "reports/2025/");
+    assert.equal(parsePrefix("/reports/2025/"), "reports/2025/");
+  });
+
+  it("drops traversal segments rather than honouring them", () => {
+    assert.equal(parsePrefix("../secret"), "secret/");
+    assert.equal(parsePrefix("a/./b/../c"), "a/b/c/");
+    assert.equal(parsePrefix(".."), "");
   });
 });

@@ -1,5 +1,7 @@
 import {
+  confirmResetPassword,
   confirmSignIn,
+  resetPassword,
   signIn,
   type SignInOutput,
 } from "aws-amplify/auth";
@@ -54,8 +56,10 @@ export function describeAuthError(error: unknown): AuthError {
       return new AuthError("Incorrect email or password.", name);
 
     case "PasswordResetRequiredException":
+      // The sign-in page reacts to this code by starting the reset flow, so the
+      // message only shows if that hand-off itself fails.
       return new AuthError(
-        "Your password must be reset before you can sign in. Ask an administrator to resend your invitation.",
+        "Your password must be reset before you can sign in.",
         name,
       );
 
@@ -80,6 +84,13 @@ export function describeAuthError(error: unknown): AuthError {
     case "TooManyFailedAttemptsException":
       return new AuthError(
         "Too many attempts. Wait a few minutes before trying again.",
+        name,
+      );
+
+    case "InvalidParameterException":
+      // Raised when a user has no verified email to send a reset code to.
+      return new AuthError(
+        "A reset code could not be sent for this account. Contact your administrator.",
         name,
       );
 
@@ -163,6 +174,41 @@ export async function answerChallenge(response: string): Promise<AuthStep> {
   try {
     const output = await confirmSignIn({ challengeResponse: response });
     return toAuthStep(output);
+  } catch (error) {
+    throw describeAuthError(error);
+  }
+}
+
+/**
+ * Sends a password-reset code to the address on the account.
+ *
+ * Used both by "Forgot password?" and when an administrator has reset the
+ * account. Resolves the same way whether or not the account exists, so this
+ * cannot be used to discover who has access.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  try {
+    await resetPassword({ username: email.trim().toLowerCase() });
+  } catch (error) {
+    const name = (error as { name?: string })?.name;
+    // An unknown or disabled account must look identical to a real one.
+    if (name === "UserNotFoundException" || name === "NotAuthorizedException") return;
+    throw describeAuthError(error);
+  }
+}
+
+/** Completes a reset with the emailed code and a new password. */
+export async function completePasswordReset(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  try {
+    await confirmResetPassword({
+      username: email.trim().toLowerCase(),
+      confirmationCode: code.replace(/\s/g, ""),
+      newPassword,
+    });
   } catch (error) {
     throw describeAuthError(error);
   }

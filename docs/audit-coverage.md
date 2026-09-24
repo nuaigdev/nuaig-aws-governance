@@ -21,7 +21,7 @@ not a button in this app.
 | --- | --- | --- |
 | `LOGIN` | Cognito post-authentication trigger | No — fires inside the auth flow |
 | `FILE_LIST`, `FILE_DOWNLOAD`, `FILE_UPLOAD`, `FILE_UPLOAD_REJECTED_COLLISION` | `audit-writer`, called by the browser | Actor and time no; the object key yes (see gaps) |
-| `USER_CREATED`, `USER_DISABLED`, `USER_REENABLED`, `USER_GROUPS_CHANGED`, `USER_INVITE_RESENT` | `admin-users`, inside the operation | No |
+| `USER_CREATED`, `USER_DISABLED`, `USER_REENABLED`, `USER_GROUPS_CHANGED`, `USER_INVITE_RESENT`, `USER_PASSWORD_RESET` | `admin-users`, inside the operation | No |
 | `GROUP_ACCESS_VIEWED`, `GROUP_ACCESS_CHANGED` | `admin-groups`, inside the operation | No |
 | `ACCESS_DENIED` | whichever handler refused | No |
 

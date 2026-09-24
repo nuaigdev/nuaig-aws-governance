@@ -105,3 +105,19 @@ export function joinKey(prefix: string, fileName: string): string {
     prefix === "" || prefix.endsWith("/") ? prefix : `${prefix}/`;
   return `${normalisedPrefix}${fileName}`;
 }
+
+/**
+ * Turns the `?path=` query value into a safe folder prefix.
+ *
+ * The prefix is user-editable through the URL, so it is normalised rather than
+ * trusted: no leading slash, no `.` or `..` segments, always a trailing slash.
+ * It is only ever used as an S3 key prefix, and IAM decides what is reachable,
+ * but a clean value keeps breadcrumbs and listings predictable.
+ */
+export function parsePrefix(raw: string | null): string {
+  if (!raw) return "";
+  const segments = raw
+    .split("/")
+    .filter((segment) => segment !== "" && segment !== "." && segment !== "..");
+  return segments.length === 0 ? "" : `${segments.join("/")}/`;
+}

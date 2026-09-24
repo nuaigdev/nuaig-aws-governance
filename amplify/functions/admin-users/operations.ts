@@ -49,7 +49,8 @@ export type ManageUsersOperation =
       readonly username: string;
       readonly groups: readonly string[];
     }
-  | { readonly operation: "resendInvite"; readonly username: string };
+  | { readonly operation: "resendInvite"; readonly username: string }
+  | { readonly operation: "resetPassword"; readonly username: string };
 
 export class OperationError extends Error {
   constructor(
@@ -69,6 +70,7 @@ const KNOWN_OPERATIONS = new Set([
   "enableUser",
   "setUserGroups",
   "resendInvite",
+  "resetPassword",
 ]);
 
 /**
@@ -116,6 +118,7 @@ export function parseOperation(
     case "disableUser":
     case "enableUser":
     case "resendInvite":
+    case "resetPassword":
       return {
         operation,
         username: requireString(input.username, "username"),

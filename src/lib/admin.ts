@@ -123,6 +123,10 @@ export function resendInvite(username: string): Promise<{ username: string }> {
   return callUsers("resendInvite", { username });
 }
 
+export function resetUserPassword(username: string): Promise<{ username: string }> {
+  return callUsers("resetPassword", { username });
+}
+
 /* ----------------------------------------------------------------- Groups */
 
 export function listGroups(): Promise<GroupAccessView[]> {

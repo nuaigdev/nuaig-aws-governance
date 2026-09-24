@@ -1,6 +1,6 @@
 /**
- * Dark anchor band. One row: our white logo, the attribution line, copyright.
- * No link farm, no filler columns.
+ * Dark anchor band. One row: our white logo (linking to nuaig.ai), the
+ * attribution and confidentiality lines, copyright. No link farm, no columns.
  */
 .footer {
   background: var(--footer-bg);
@@ -23,6 +23,23 @@
   height: 22px;
   width: auto;
   flex-shrink: 0;
+}
+
+.logoLink {
+  display: inline-flex;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.notice {
+  font-size: 0.75rem;
+  color: rgba(247, 245, 242, 0.55);
 }
 
 .attribution {
