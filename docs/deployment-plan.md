@@ -96,14 +96,16 @@ aws sts get-caller-identity --profile <client>   # confirm the account ID
 
 **Check:** the account ID printed matches Part A item 1.
 
-### 2. Register the client config
+### 2. Finish the client config
 
-Create `config/clients/<client-id>.ts` from `acme-senior-living.ts`:
-`bucketProvisioning: "existing"`, the four bucket names, groups, display name,
-and `logo` if supplied (file into `public/branding/`). Register it in
-`config/index.ts`. Config validation runs at import, so mistakes fail here.
+`config/clients/presbyterian-senior-living.ts` already exists and is registered,
+with the display name, groups and logo (`public/branding/presbyterian-senior-living/logo.svg`). What is
+left is the four **bucket names**: they are placeholders that fail validation on
+purpose. Replace each `TODO_*` value with the exact name from Part A item 3.
+Confirm the group labels and grants with the client while you are there.
 
-**Check:** `NEXT_PUBLIC_CLIENT_ID=<client-id> npm run verify` passes.
+**Check:** `NEXT_PUBLIC_CLIENT_ID=presbyterian-senior-living npm run verify`
+passes. (It cannot pass while any `TODO_*` name remains.)
 
 ### 3. Bootstrap the account (once per account and region)
 

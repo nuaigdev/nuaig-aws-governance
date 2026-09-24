@@ -251,7 +251,7 @@ deployment day needs no assessment.
 - **Admin password reset** exists (Users page → Reset password), audited as
   `USER_PASSWORD_RESET`.
 - **Before go-live checklist:** `npm run verify` green; client config registered
-  with the real bucket names; client logo in `public/branding/` (or accepted as
+  with the real bucket names; client logo in `public/branding/<client-id>/` (or accepted as
   text); `docs/deployment-plan.md` Part C followed in order.
 
 ## Roles and groups (define from the start)

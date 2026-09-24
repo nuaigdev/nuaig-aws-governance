@@ -1,5 +1,6 @@
 import { clientConfig as acmeSeniorLiving } from "./clients/acme-senior-living";
 import { clientConfig as nuaigInternal } from "./clients/nuaig-internal";
+import { clientConfig as presbyterianSeniorLiving } from "./clients/presbyterian-senior-living";
 import type { ClientConfig } from "./types";
 import { validateClientConfig } from "./validate";
 
@@ -13,6 +14,7 @@ import { validateClientConfig } from "./validate";
 const CLIENT_CONFIGS: Readonly<Record<string, ClientConfig>> = {
   [nuaigInternal.clientId]: nuaigInternal,
   [acmeSeniorLiving.clientId]: acmeSeniorLiving,
+  [presbyterianSeniorLiving.clientId]: presbyterianSeniorLiving,
 };
 
 /**
