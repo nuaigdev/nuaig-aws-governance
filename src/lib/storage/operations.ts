@@ -7,6 +7,7 @@ import { canRead, canUpload } from "@config/access";
 import { configureAmplify, resolveBucket } from "@/lib/amplify/client";
 import { recordDataAccess } from "@/lib/audit";
 
+import { downloadPresentation } from "./download-policy";
 import { joinKey, nextAvailableKey, sanitiseFileName } from "./keys";
 
 /**
@@ -35,6 +36,32 @@ export interface StorageEntry {
   readonly uploadedBy: string | null;
 }
 
+/**
+ * Objects fetched per S3 call while filling one folder view.
+ */
+const LIST_PAGE_SIZE = 1000;
+
+/**
+ * Ceiling on how many objects one folder view will fetch.
+ *
+ * `listAll` used to be passed here, which enumerates *every* object under the
+ * prefix. Our showcase buckets hold a few dozen seeded files, so that was never
+ * stressed — but a real client folder with tens of thousands of objects would
+ * issue hundreds of sequential calls and hang the tab. A governance tool that
+ * freezes on the client's largest folder is worse than one that says it is
+ * showing the first few thousand entries.
+ */
+const LIST_MAX_ENTRIES = 5000;
+
+/** One folder view: its rows, and whether the folder holds more than we fetched. */
+export interface ListResult {
+  readonly entries: readonly StorageEntry[];
+  /** True when the folder holds more objects than `LIST_MAX_ENTRIES`. */
+  readonly truncated: boolean;
+  /** The ceiling that applied, so the UI can state it without duplicating it. */
+  readonly limit: number;
+}
+
 export class AccessDeniedError extends Error {
   constructor(bucketId: string) {
     super(`You do not have access to the "${bucketId}" bucket.`);
@@ -57,13 +84,14 @@ function bucketTarget(bucketId: string) {
  *
  * Amplify's `list` with `subpathStrategy: exclude` gives us S3's delimiter
  * behaviour, so a bucket with 50,000 objects across folders does not have to be
- * enumerated to render one screen.
+ * enumerated to render one screen. Pages are fetched up to `LIST_MAX_ENTRIES`
+ * and then stopped — see that constant for why there is a ceiling at all.
  */
 export async function listEntries(
   bucketId: string,
   groups: readonly string[],
   prefix: string,
-): Promise<StorageEntry[]> {
+): Promise<ListResult> {
   if (!canRead(activeClient, groups, bucketId)) {
     await recordDataAccess({
       action: "ACCESS_DENIED",
@@ -74,16 +102,51 @@ export async function listEntries(
     throw new AccessDeniedError(bucketId);
   }
 
-  const result = await list({
-    path: prefix,
-    options: {
-      bucket: bucketTarget(bucketId),
-      listAll: true,
-      subpathStrategy: { strategy: "exclude" },
-    },
-  });
+  const bucket = bucketTarget(bucketId);
 
-  const folders: StorageEntry[] = (result.excludedSubpaths ?? []).map((subpath) => ({
+  const files: StorageEntry[] = [];
+  // Folder rows are derived from common prefixes, which repeat across pages.
+  const folderKeys = new Set<string>();
+  let nextToken: string | undefined;
+  let truncated = false;
+
+  do {
+    const page = await list({
+      path: prefix,
+      options: {
+        bucket,
+        pageSize: LIST_PAGE_SIZE,
+        nextToken,
+        subpathStrategy: { strategy: "exclude" },
+      },
+    });
+
+    for (const subpath of page.excludedSubpaths ?? []) folderKeys.add(subpath);
+
+    for (const item of page.items) {
+      // S3 represents an empty folder as a zero-byte object ending in `/`.
+      // Showing it as a file would be noise.
+      if (item.path === prefix || item.path.endsWith("/")) continue;
+
+      files.push({
+        key: item.path,
+        name: item.path.slice(prefix.length),
+        size: item.size,
+        lastModified: item.lastModified ? item.lastModified.toISOString() : null,
+        isFolder: false,
+        uploadedBy: null,
+      });
+    }
+
+    nextToken = page.nextToken;
+
+    if (files.length + folderKeys.size >= LIST_MAX_ENTRIES) {
+      truncated = Boolean(nextToken);
+      break;
+    }
+  } while (nextToken);
+
+  const folders: StorageEntry[] = [...folderKeys].map((subpath) => ({
     key: subpath,
     name: subpath.slice(prefix.length).replace(/\/$/, ""),
     size: undefined,
@@ -92,27 +155,18 @@ export async function listEntries(
     uploadedBy: null,
   }));
 
-  const files: StorageEntry[] = result.items
-    // S3 represents an empty folder as a zero-byte object ending in `/`.
-    // Showing it as a file would be noise.
-    .filter((item) => item.path !== prefix && !item.path.endsWith("/"))
-    .map((item) => ({
-      key: item.path,
-      name: item.path.slice(prefix.length),
-      size: item.size,
-      lastModified: item.lastModified ? item.lastModified.toISOString() : null,
-      isFolder: false,
-      uploadedBy: null,
-    }));
-
   await recordDataAccess({
     action: "FILE_LIST",
     outcome: "SUCCESS",
     bucketId,
-    detail: { prefix, folders: folders.length, files: files.length },
+    detail: { prefix, folders: folders.length, files: files.length, truncated },
   });
 
-  return [...folders, ...files];
+  return {
+    entries: [...folders, ...files],
+    truncated,
+    limit: LIST_MAX_ENTRIES,
+  };
 }
 
 /**
@@ -121,6 +175,10 @@ export async function listEntries(
  * The URL is minted against the user's own scoped credentials, so it cannot
  * reach a bucket their group does not grant. 5 minutes is enough to start a
  * download and short enough that a URL pasted into a chat is stale quickly.
+ *
+ * `Content-Disposition` and `Content-Type` are both forced on the response, so
+ * a file the portal did not create cannot render itself as a page in the
+ * browser. See `download-policy.ts` for what that defends against.
  */
 export async function getDownloadUrl(
   bucketId: string,
@@ -138,12 +196,16 @@ export async function getDownloadUrl(
     throw new AccessDeniedError(bucketId);
   }
 
+  const presentation = downloadPresentation(key);
+
   const { url } = await getUrl({
     path: key,
     options: {
       bucket: bucketTarget(bucketId),
       expiresIn: 300,
       validateObjectExistence: true,
+      contentDisposition: presentation.contentDisposition,
+      contentType: presentation.contentType,
     },
   });
 
@@ -152,6 +214,7 @@ export async function getDownloadUrl(
     outcome: "SUCCESS",
     bucketId,
     objectKey: key,
+    detail: { served: presentation.contentDisposition },
   });
 
   return url.toString();

@@ -1,3 +1,5 @@
+import { activeClient } from "@config/index";
+
 import {
   confirmResetPassword,
   confirmSignIn,
@@ -132,9 +134,10 @@ export function toAuthStep(output: SignInOutput): AuthStep {
         kind: "totp-setup",
         secret: setup.sharedSecret,
         // The issuer is what the user sees in their authenticator app, so it
-        // must name the portal rather than a raw pool id.
+        // must name the client's portal — never a raw pool id, and never us:
+        // the entry sits in the user's phone for years.
         uri: setup
-          .getSetupUri("Nuaig S3 Governance Portal")
+          .getSetupUri(`${activeClient.displayName} Secure File Access`)
           .toString(),
       };
     }

@@ -21,6 +21,7 @@ import {
   type AuthStep,
 } from "@/lib/auth/flow";
 import { BackendNotDeployedError, isPlaceholderConfig } from "@/lib/amplify/client";
+import { safeNextPath } from "@/lib/navigation";
 import { SIGN_IN_NOTICE } from "@/lib/notices";
 
 import styles from "./SignIn.module.css";
@@ -46,7 +47,7 @@ function SignInFlow() {
   );
   const [busy, setBusy] = useState(false);
 
-  const nextPath = searchParams.get("next") ?? "/buckets";
+  const nextPath = safeNextPath(searchParams.get("next"));
 
   // Already signed in — for example, a second tab, or a back-navigation after
   // signing in elsewhere.

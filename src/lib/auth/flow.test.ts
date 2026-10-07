@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { activeClient } from "@config/index";
+
 import {
   AuthError,
   checkPassword,
@@ -53,8 +55,11 @@ describe("toAuthStep", () => {
     assert.equal(step.kind, "totp-setup");
     if (step.kind !== "totp-setup") return;
     assert.equal(step.secret, "SECRET123");
-    // The issuer is what the user sees in their authenticator app.
-    assert.match(step.uri, /Nuaig/);
+    // The issuer is what the user sees in their authenticator app, so it names
+    // the client — and must never name Nuaig, since the entry sits on the
+    // user's phone for years. This asserted /Nuaig/ before client white-labelling.
+    assert.match(step.uri, new RegExp(encodeURIComponent(activeClient.displayName)));
+    assert.doesNotMatch(step.uri, /Nuaig/i);
   });
 
   it("surfaces an unhandled step rather than silently doing nothing", () => {

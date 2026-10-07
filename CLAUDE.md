@@ -166,8 +166,17 @@ type BucketGrant = { bucketId: BucketId | "*"; mode: AccessMode }
 ```
 
 - `"read"` — `s3:GetObject` + `s3:ListBucket`.
-- `"read-upload"` — the above plus `s3:PutObject` for **new keys only**. Never
-  `s3:DeleteObject`, `s3:DeleteObjectVersion`, or an overwrite of an existing key.
+- `"read-upload"` — the above plus `s3:PutObject`. Never `s3:DeleteObject` or
+  `s3:DeleteObjectVersion`.
+  **Be precise about where "never overwrite" comes from.** `s3:PutObject` *is*
+  the overwrite operation; IAM cannot distinguish a new key from an existing
+  one. The guarantee is therefore two things, not one: the app probes for a free
+  key and renames on collision (`nextAvailableKey`), and **bucket versioning**
+  means that even a PutObject issued outside the portal — with the session's own
+  temporary credentials — leaves the previous version intact, which nothing in
+  this app can then delete. Versioning is not a nice-to-have; it is load-bearing
+  for the core promise, which is why `prepare:buckets` refuses to finish without
+  it.
 - `bucketId: "*"` is the admin grant, matching the IAM wildcard idiom.
 
 The mode is named `read-upload` and not `read-write` on purpose: "write" is the word that
@@ -183,10 +192,20 @@ See **Critical constraint** below.
   **No Nuaig logo and no divider in the header** — the header is the client's.
 - Login page: the client's logo (or `displayName` text) is the primary mark; Nuaig
   appears only in the page footer.
-- Footer (dark band, uses the white logo variant, on every page including sign-in):
-  our logo — linking to https://nuaig.ai in a new tab (`rel="noopener noreferrer"`) — one line — "Built and
-  managed by Nuaig for [Client displayName]" — plus a copyright line. Keep it to one row,
-  no link farm, no filler columns.
+- **Nuaig branding appears only on our own showcase tenant.** A client portal
+  carries the client's identity and nothing else: no logo of ours, no "built and
+  managed by" line, no copyright naming us, and not in the page metadata or the
+  TOTP issuer the user sees in their authenticator app either. The gate is
+  `showNuaigBranding` in the client config, which **defaults to false** so a new
+  client is unbranded without anyone remembering to set it; `config/branding.test.ts`
+  fails if a client tenant ever turns it on. Do not reintroduce a Nuaig string
+  into any client-facing surface.
+- Footer (dark band, on every page including sign-in): for a client, one line —
+  the confidentiality notice, which is about their data rather than about us.
+  With `showNuaigBranding`, it additionally carries our white logo (linking to
+  https://nuaig.ai in a new tab, `rel="noopener noreferrer"`), the "Built and
+  managed by Nuaig for [Client displayName]" line and a copyright line. One row
+  either way, no link farm, no filler columns.
 - Never invent a client logo or name; if a client hasn't supplied a logo, show their
   `displayName` as styled text only.
 
@@ -250,9 +269,21 @@ deployment day needs no assessment.
 - **Sessions:** 30 min idle sign-out in the UI, short access tokens, 12 h refresh.
 - **Admin password reset** exists (Users page → Reset password), audited as
   `USER_PASSWORD_RESET`.
+- **Download hardening:** signed URLs force `Content-Disposition` and pin
+  `Content-Type` (`src/lib/storage/download-policy.ts`). Inline preview is an
+  allowlist — never SVG or HTML — because a client's buckets hold files this
+  portal did not create, and an `.html` among them would otherwise run its own
+  script on an `amazonaws.com` origin reached from a trusted portal.
+- **Listing is capped**, not `listAll`: one folder view fetches at most 5,000
+  entries and says so in the UI. A client folder with tens of thousands of
+  objects would otherwise hang the tab.
+- **`?next=` is validated** (`src/lib/navigation.ts`). An unvalidated value let
+  `/sign-in?next=https://evil.example` redirect a just-authenticated user
+  off-site — the cheapest phishing chain against an auth flow.
 - **Before go-live checklist:** `npm run verify` green; client config registered
   with the real bucket names; client logo in `public/branding/<client-id>/` (or accepted as
-  text); `docs/deployment-plan.md` Part C followed in order.
+  text); upload grants confirmed with the client (start admin-only and widen at
+  runtime, never the reverse); `docs/deployment-plan.md` Part C followed in order.
 
 ## Roles and groups (define from the start)
 

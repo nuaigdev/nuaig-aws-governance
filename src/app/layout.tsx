@@ -30,7 +30,9 @@ export const metadata: Metadata = {
     default: `${activeClient.displayName} — Secure File Access`,
     template: `%s — ${activeClient.displayName}`,
   },
-  description: `Managed S3 access portal for ${activeClient.displayName}, built and operated by Nuaig.`,
+  description: activeClient.showNuaigBranding
+    ? `Managed S3 access portal for ${activeClient.displayName}, built and operated by Nuaig.`
+    : `Secure file access portal for ${activeClient.displayName}.`,
   // The portal is behind authentication and holds client data; it should never
   // appear in a search index even if a URL leaks.
   robots: { index: false, follow: false },

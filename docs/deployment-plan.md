@@ -173,6 +173,12 @@ management is done inside the portal.
 | Create a test user in one group, sign in as them | They see only that group's buckets. |
 | Reset the test user's password from the Users page | Emailed code arrives; new password works; audit entry exists. |
 | Look for any delete / overwrite control anywhere | None exists. |
+| Look for any mention of Nuaig in the portal | None — header, footer, page title and the authenticator app entry all name the client only. |
+| Download a PDF and an image | Both preview in the browser. |
+| Download a `.docx` or `.zip` | Saves to disk rather than opening. |
+| If any bucket holds an `.html` or `.svg`, download it | Saves to disk; it must **not** render as a page. |
+| Open the largest folder in each bucket | Lists within a few seconds; if capped, the "first 5,000 items" notice appears. |
+| Visit `/sign-in?next=https://example.com`, then sign in | Lands on the portal's own bucket list, never the external site. |
 | Audit log page | Shows the login, list, download and admin actions above. |
 | Leave a session idle | Signs out after the idle limit. |
 

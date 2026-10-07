@@ -8,10 +8,31 @@ import styles from "./AppFooter.module.css";
 /**
  * Dark anchor band, shared by the signed-in shell and the sign-in page.
  *
- * This is the only place Nuaig's logo appears: the header and sign-in card
- * belong to the client. The logo links out to nuaig.ai in a new tab.
+ * ## Nuaig's branding is opt-in, and clients do not opt in
+ *
+ * A client portal carries the client's identity and nothing else — no logo of
+ * ours, no "built and managed by", no copyright line naming us. The header and
+ * sign-in card were already the client's; this makes the footer match, so there
+ * is no surface in the product that names us to their staff.
+ *
+ * The flag lives in the client config and defaults to false, so a new client
+ * added later is unbranded without anyone having to remember. Only our own
+ * showcase tenant turns it on.
+ *
+ * What remains for a client is the confidentiality line, which is about their
+ * data rather than about us, and is the reason this band still exists at all.
  */
 export function AppFooter() {
+  if (!activeClient.showNuaigBranding) {
+    return (
+      <footer className={styles.footer}>
+        <div className={styles.inner}>
+          <p className={styles.notice}>{FOOTER_NOTICE}</p>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className={styles.footer}>
       <div className={styles.inner}>

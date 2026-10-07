@@ -22,6 +22,18 @@ that can add one:
 | `read` | `GetObject`, `GetObjectVersion` |
 | `read-upload` | the above, plus `PutObject`, `AbortMultipartUpload`, `ListMultipartUploadParts` |
 
+**What `PutObject` does and does not bound.** `s3:PutObject` is also the
+operation that overwrites an existing key — IAM has no way to say "new keys
+only". So the no-overwrite promise does not rest on the policy. It rests on the
+collision check in the app plus bucket versioning, described under "Uploads
+never overwrite" below. A holder of `read-upload` who used their session's
+temporary credentials directly against S3, outside the portal, could issue such
+a PutObject; with versioning on, the earlier version survives it, and
+`DeleteObjectVersion` is denied to them by both the policy and the boundary, so
+the data cannot be destroyed. Without versioning, that one path would be
+destructive — which is why enabling it is a precondition of deployment and not
+an optional hardening step.
+
 Never granted at any level: `DeleteObject`, `DeleteObjectVersion`,
 `DeleteBucket`, `PutObjectAcl`, `PutBucketPolicy`, `PutLifecycleConfiguration`,
 `PutBucketVersioning`.

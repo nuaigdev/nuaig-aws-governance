@@ -15,6 +15,15 @@ import type { ClientConfig } from "../types";
  * bucket that does not exist. Get the names from the client — see Part A of
  * `docs/deployment-plan.md`.
  *
+ * ## Upload starts admin-only, deliberately
+ *
+ * Only a handful of people are expected to upload, so every scoped group below
+ * is `read`. That is the most restrictive start, and it costs nothing to widen:
+ * an administrator can grant `read-upload` to a group from the Groups page at
+ * runtime, without a code change or a deploy. Starting permissive and narrowing
+ * later is the version that needs a deploy, and the version that leaves an
+ * unnecessary write grant live in the meantime.
+ *
  * Group labels and descriptions follow the reference structure in
  * `acme-senior-living.ts`; confirm the wording and the grants with the client.
  */
@@ -66,8 +75,8 @@ export const clientConfig: ClientConfig = {
     {
       id: "documents",
       label: "Documents Team",
-      description: "Maintains operational documents and imagery.",
-      bucketAccess: [{ bucketId: "documents", mode: "read-upload" }],
+      description: "Reads operational documents and imagery.",
+      bucketAccess: [{ bucketId: "documents", mode: "read" }],
     },
     {
       id: "pii",
@@ -78,8 +87,8 @@ export const clientConfig: ClientConfig = {
     {
       id: "financial",
       label: "Finance Team",
-      description: "Reads and files financial records.",
-      bucketAccess: [{ bucketId: "financial", mode: "read-upload" }],
+      description: "Reads financial records.",
+      bucketAccess: [{ bucketId: "financial", mode: "read" }],
     },
     {
       id: "clinical",

@@ -94,6 +94,19 @@ export interface ClientConfig {
    * Never invent a client logo.
    */
   readonly logo?: string;
+  /**
+   * Whether Nuaig's own branding appears in the portal — the footer logo, the
+   * "built and managed by" line and our copyright.
+   *
+   * **Defaults to false**, so a client deployment is unbranded unless someone
+   * deliberately opts in. The default is that way round because the failure
+   * mode matters: forgetting the flag on a new client config shows the client a
+   * clean portal, whereas the opposite default would put our logo in front of
+   * a client who never agreed to it.
+   *
+   * Only our own showcase tenant sets this to true.
+   */
+  readonly showNuaigBranding?: boolean;
   readonly buckets: readonly BucketDefinition[];
   readonly groups: readonly GroupDefinition[];
 }

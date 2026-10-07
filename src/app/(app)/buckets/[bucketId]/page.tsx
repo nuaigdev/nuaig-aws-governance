@@ -72,6 +72,7 @@ function BucketBrowser() {
     [router, params.bucketId],
   );
   const [entries, setEntries] = useState<StorageEntry[]>([]);
+  const [truncated, setTruncated] = useState<{ limit: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -89,7 +90,9 @@ function BucketBrowser() {
     setLoading(true);
     setError(null);
     try {
-      setEntries(await listEntries(bucketId, groups, prefix));
+      const result = await listEntries(bucketId, groups, prefix);
+      setEntries([...result.entries]);
+      setTruncated(result.truncated ? { limit: result.limit } : null);
     } catch (caught) {
       setError(
         caught instanceof AccessDeniedError
@@ -97,6 +100,7 @@ function BucketBrowser() {
           : "The bucket contents could not be loaded. Please try again.",
       );
       setEntries([]);
+      setTruncated(null);
     } finally {
       setLoading(false);
     }
@@ -387,6 +391,17 @@ function BucketBrowser() {
               Clear completed
             </Button>
           </div>
+        </div>
+      )}
+
+      {truncated && (
+        <div className={styles.noticeStack}>
+          <Message tone="warning">
+            This folder holds more than{" "}
+            <span className="data">{truncated.limit.toLocaleString()}</span> items, so
+            only the first {truncated.limit.toLocaleString()} are listed. Open a
+            subfolder to narrow the view — search only filters what is shown here.
+          </Message>
         </div>
       )}
 

@@ -14,6 +14,8 @@ export const clientConfig: ClientConfig = {
   displayName: "Northwind Care Group",
   // Our showcase account has no pre-existing buckets, so the stack creates them.
   bucketProvisioning: "managed",
+  // Our own showcase, so our branding belongs here. Client tenants omit this.
+  showNuaigBranding: true,
   // No `logo`: Northwind Care Group is a demonstration tenant and has supplied
   // no logo, so the header renders its displayName as styled text. This is the
   // same path a real client without a logo takes — worth exercising in the

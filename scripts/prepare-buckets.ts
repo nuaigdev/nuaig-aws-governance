@@ -253,6 +253,29 @@ async function main() {
   }
 
   if (problems > 0) fail(`${problems} bucket(s) could not be prepared. Fix the above and re-run.`);
+
+  /**
+   * Versioning is load-bearing, not cosmetic.
+   *
+   * `s3:PutObject` is also the overwrite operation, and IAM cannot restrict it
+   * to new keys. Versioning is what makes an overwrite recoverable instead of
+   * destructive, and `DeleteObjectVersion` is denied to every group role, so a
+   * prior version cannot then be removed through the portal. A deployment that
+   * proceeded without it would be making a promise it could not keep, so this
+   * exits non-zero rather than printing a warning somebody scrolls past.
+   */
+  if (!DRY_RUN) {
+    const unversioned = rows.filter((row) => row.versioning !== "Enabled");
+    if (unversioned.length > 0) {
+      fail(
+        `Versioning is not enabled on: ${unversioned.map((row) => row.bucket).join(", ")}. ` +
+          `The portal's no-overwrite guarantee depends on it, so do not deploy until it is on. ` +
+          `If this run could not enable it, the deployment identity is missing ` +
+          `s3:PutBucketVersioning on that bucket.`,
+      );
+    }
+  }
+
   console.log(DRY_RUN ? "\nDry run complete. Re-run without --dry-run to apply." : "\nBuckets are ready.");
 }
 
