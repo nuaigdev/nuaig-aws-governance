@@ -33,7 +33,7 @@ npm test                     # node:test via tsx
 npm run sandbox              # ampx sandbox — deploys a personal backend
 npm run sandbox:delete
 npm run seed:showcase        # synthetic sample files; add --dry-run to preview
-npm run prepare:buckets      # client's existing buckets: versioning + CORS (--dry-run first)
+npm run prepare:buckets      # client's buckets: versioning + CORS (--versioning-only to skip CORS)
 npm run discover:buckets     # read-only: list an account's buckets + print a config skeleton
 npm run verify:stack         # synthesizes locally and proves the stack cannot touch client buckets
 npm run protect:buckets      # deny-deletion bucket policy on a client's buckets (--dry-run first)

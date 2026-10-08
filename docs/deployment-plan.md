@@ -54,9 +54,18 @@ account, so no key is ever sent. Either way the identity is temporary.
 The portal's browser talks to S3 directly, so two things about the client's
 existing buckets must be right. Both are handled by one script, run by us.
 
+Versioning first, before anything else touches the account:
+
 ```bash
-npm run prepare:buckets -- --account <account-id> --dry-run   # report only
-npm run prepare:buckets -- --account <account-id>             # applies the changes below
+npm run prepare:buckets -- --account <account-id> --versioning-only --dry-run
+npm run prepare:buckets -- --account <account-id> --versioning-only
+```
+
+CORS needs the portal's URL, which does not exist until after the first build,
+so it is a second pass in Part C step 5:
+
+```bash
+PORTAL_ALLOWED_ORIGINS=https://<url> npm run prepare:buckets -- --account <account-id>
 ```
 
 The script reads the bucket list from the active client config, and for each

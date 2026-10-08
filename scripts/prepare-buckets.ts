@@ -49,6 +49,17 @@ import {
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes("--dry-run");
 
+/**
+ * Enable versioning without needing the portal's URL yet.
+ *
+ * Versioning is the protection that has to exist first: it is what makes an
+ * accidental delete or overwrite recoverable, and `protect:buckets` refuses to
+ * run until it is on. CORS is only needed once there is an origin to allow,
+ * which is after the first build — so without this flag the safety step would
+ * be blocked waiting on a URL.
+ */
+const VERSIONING_ONLY = args.includes("--versioning-only");
+
 const accountIndex = args.indexOf("--account");
 const ACCOUNT = accountIndex === -1 ? undefined : args[accountIndex + 1];
 
@@ -85,11 +96,16 @@ async function main() {
     );
   }
 
-  let origins: string[];
-  try {
-    origins = parseOrigins(process.env.PORTAL_ALLOWED_ORIGINS);
-  } catch (error) {
-    return fail((error as Error).message);
+  let origins: string[] = [];
+  if (!VERSIONING_ONLY) {
+    try {
+      origins = parseOrigins(process.env.PORTAL_ALLOWED_ORIGINS);
+    } catch (error) {
+      return fail(
+        `${(error as Error).message}\n\nTo turn versioning on before the portal has a ` +
+          `URL, pass --versioning-only, then re-run without it after the first build.`,
+      );
+    }
   }
 
   if (!ACCOUNT || !/^\d{12}$/.test(ACCOUNT)) {
@@ -102,7 +118,7 @@ async function main() {
     `${DRY_RUN ? "DRY RUN — nothing will be changed.\n" : ""}` +
       `Client:   ${activeClient.displayName} (${activeClient.clientId})\n` +
       `Account:  ${account}\n` +
-      `Origins:  ${origins.join(", ")}\n`,
+      `Origins:  ${VERSIONING_ONLY ? "(CORS skipped — --versioning-only)" : origins.join(", ")}\n`,
   );
 
   const rows: Row[] = [];
@@ -165,6 +181,18 @@ async function main() {
     }
 
     /* --------------------------------------------------------- CORS --- */
+    if (VERSIONING_ONLY) {
+      rows.push({
+        bucket,
+        versioning: versioning === "Enabled" ? "Enabled" : `${versioning} (dry run)`,
+        cors: "skipped",
+        publicAccessBlocked: "not checked",
+        tlsOnly: "not checked",
+        encryption: "not checked",
+      });
+      continue;
+    }
+
     let existing: CorsRule[] = [];
     try {
       existing = ((await s3.send(new GetBucketCorsCommand(owner))).CORSRules ?? []) as CorsRule[];
@@ -274,6 +302,14 @@ async function main() {
           `s3:PutBucketVersioning on that bucket.`,
       );
     }
+  }
+
+  if (VERSIONING_ONLY && !DRY_RUN) {
+    console.log(
+      "\nVersioning is on. Next: `npm run protect:buckets` to deny deletion, then\n" +
+        "re-run this without --versioning-only once the portal has a URL, to set CORS.",
+    );
+    return;
   }
 
   console.log(DRY_RUN ? "\nDry run complete. Re-run without --dry-run to apply." : "\nBuckets are ready.");
