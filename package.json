@@ -18,6 +18,7 @@
     "prepare:buckets": "tsx scripts/prepare-buckets.ts",
     "discover:buckets": "tsx scripts/discover-buckets.ts",
     "verify:stack": "tsx scripts/verify-stack.ts",
+    "protect:buckets": "tsx scripts/protect-buckets.ts",
     "sandbox:delete": "ampx sandbox delete",
     "verify": "npm run typecheck && npm run lint && npm run test"
   },

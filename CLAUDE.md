@@ -36,6 +36,7 @@ npm run seed:showcase        # synthetic sample files; add --dry-run to preview
 npm run prepare:buckets      # client's existing buckets: versioning + CORS (--dry-run first)
 npm run discover:buckets     # read-only: list an account's buckets + print a config skeleton
 npm run verify:stack         # synthesizes locally and proves the stack cannot touch client buckets
+npm run protect:buckets      # deny-deletion bucket policy on a client's buckets (--dry-run first)
 ```
 
 Run a single test file, or one test by name:
@@ -268,6 +269,20 @@ deployment day needs no assessment.
   overwrite-race work beyond versioning; no Cognito advanced security; no custom
   domain; compliance is covered by the existing BAA, so notices are generic and
   platform-level, not client-authored legal text.
+- **Deny-deletion bucket policy:** `npm run protect:buckets` adds a `Deny` on
+  `DeleteObject`, `DeleteObjectVersion`, `DeleteBucket` and `PutBucketVersioning`
+  to **every** principal including the account root. This is the only control
+  that constrains the *deployment* credentials, which are account-wide for the
+  deployment window — a mistyped `aws s3 rm --recursive` is the realistic way
+  this data dies, not the application. Run it **after** `prepare:buckets`: the
+  statement denies `PutBucketVersioning`, so applying it first would lock
+  versioning off, and the script refuses to run until versioning is on.
+  It merges into any existing policy (`PutBucketPolicy` replaces, never merges —
+  that is the hand-editing trap) and never denies the policy-management actions,
+  which would make the policy permanently unchangeable.
+  **Lifecycle rules are not blocked by a bucket policy** — S3 executes them
+  itself — so the script reports any expiration rule rather than implying it is
+  covered.
 - **Sessions:** 30 min idle sign-out in the UI, short access tokens, 12 h refresh.
 - **Admin password reset** exists (Users page → Reset password), audited as
   `USER_PASSWORD_RESET`.

@@ -80,6 +80,41 @@ objects, and never touches bucket policy or encryption.
 
 ---
 
+## Part B2 — Lock deletion out (Nuaig, after versioning)
+
+Order matters, and this step depends on Part B having run.
+
+```bash
+NEXT_PUBLIC_CLIENT_ID=<client-id> npm run protect:buckets --   --account <account-id> --profile <client> --dry-run
+# read the printed policy, then:
+NEXT_PUBLIC_CLIENT_ID=<client-id> npm run protect:buckets --   --account <account-id> --profile <client>
+```
+
+Adds a `Deny` on `s3:DeleteObject`, `s3:DeleteObjectVersion`, `s3:DeleteBucket`
+and `s3:PutBucketVersioning` to every principal, **including the account root**.
+
+Why it is worth a step of its own: the portal's roles already cannot delete, but
+nothing constrains the deployment credentials, which are account-wide while we
+hold them. An operator's mistyped `aws s3 rm --recursive` is the realistic
+threat to this data, and a bucket policy is the only control that reaches it.
+
+- It **merges**. `PutBucketPolicy` replaces the whole document, so a hand-written
+  version would silently drop a client's existing TLS-only or backup-tool
+  statement. Every statement that is not ours is preserved and listed.
+- It **refuses** if versioning is not yet on, because the statement denies
+  `PutBucketVersioning` and would otherwise lock versioning off permanently.
+- It never denies `PutBucketPolicy` / `DeleteBucketPolicy`. Denying those to
+  everyone makes the policy unchangeable by anyone, root included.
+- It **reports lifecycle expiration rules** and does not pretend to stop them:
+  S3 runs lifecycle itself, so no bucket policy blocks it. If a rule is expiring
+  objects, that is live data loss today and the client needs to know.
+
+**Check:** every bucket reports the statement added, and no bucket is skipped.
+To delete anything afterwards the policy must be edited deliberately — which is
+the intended posture, and the account owner can reverse it in one action.
+
+---
+
 ## Part C — Deployment steps (Nuaig)
 
 Do these in order. Each step has a check that must pass before continuing.
