@@ -1,0 +1,54 @@
+# Amplify Hosting build spec.
+#
+# Without this file Amplify auto-detects a plain Next.js app and never runs
+# `ampx pipeline-deploy`, so the backend is never created and the frontend ships
+# wired to the marked placeholder from `scripts/ensure-amplify-outputs.mjs` —
+# a deployment that builds green and then tells every visitor the backend is not
+# deployed. The two phases below have to stay in this order: the backend phase
+# writes the real `amplify_outputs.json`, and the frontend build consumes it.
+# `ensure-amplify-outputs.mjs` exits early when the file already exists, so it
+# cannot clobber what pipeline-deploy just wrote.
+#
+# Branch deployments use standard CloudFormation mode, which is why this is the
+# path to production rather than a sandbox — see the Express mode trap in
+# CLAUDE.md.
+version: 1
+backend:
+  phases:
+    preBuild:
+      commands:
+        # Amplify's default image has pinned Node 18 in the past; this repo
+        # needs 20+. Failing here is clearer than a mid-build syntax error.
+        - nvm use 20
+        - node --version
+        # Config resolution throws without this, and the resulting stack trace
+        # points at config/index.ts rather than at the missing variable. Set it
+        # on the Amplify app (or the branch) as an environment variable.
+        - test -n "$NEXT_PUBLIC_CLIENT_ID" || { echo "FATAL - NEXT_PUBLIC_CLIENT_ID is not set on this Amplify app. Set it to the client id, e.g. presbyterian-senior-living."; exit 1; }
+        - echo "Deploying client - $NEXT_PUBLIC_CLIENT_ID"
+        - npm ci --cache .npm --prefer-offline
+    build:
+      commands:
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - nvm use 20
+        # Already installed by the backend phase in the same container, but this
+        # keeps the frontend phase runnable on its own.
+        - npm ci --cache .npm --prefer-offline
+    build:
+      commands:
+        # Fails loudly if the backend phase did not produce real outputs, rather
+        # than deploying a portal that reports itself undeployed.
+        - grep -q '"\$placeholder"' amplify_outputs.json && { echo "FATAL - amplify_outputs.json is still the placeholder; the backend phase did not run or did not complete."; exit 1; } || true
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - .next/cache/**/*
+      - .npm/**/*

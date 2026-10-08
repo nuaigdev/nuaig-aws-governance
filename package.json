@@ -16,6 +16,7 @@
     "sandbox": "ampx sandbox",
     "seed:showcase": "tsx scripts/seed-showcase-data.ts",
     "prepare:buckets": "tsx scripts/prepare-buckets.ts",
+    "discover:buckets": "tsx scripts/discover-buckets.ts",
     "sandbox:delete": "ampx sandbox delete",
     "verify": "npm run typecheck && npm run lint && npm run test"
   },
