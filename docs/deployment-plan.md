@@ -107,6 +107,25 @@ Confirm the group labels and grants with the client while you are there.
 **Check:** `NEXT_PUBLIC_CLIENT_ID=presbyterian-senior-living npm run verify`
 passes. (It cannot pass while any `TODO_*` name remains.)
 
+### 2b. Prove the stack cannot touch their buckets (no credentials needed)
+
+```bash
+NEXT_PUBLIC_CLIENT_ID=<client-id> npm run verify:stack
+```
+
+Synthesizes the CloudFormation templates locally and asserts the three
+properties that actually bound the blast radius: the storage stack contains
+**zero** resources, no client bucket appears as an `AWS::S3::Bucket` or as the
+target of an `AWS::S3::BucketPolicy`, and no `Allow` statement anywhere grants a
+destructive or wildcard S3 action on a client bucket.
+
+The first of those is the load-bearing one. CloudFormation can only act on
+resources it manages; with none for these buckets, there is nothing for a
+create, an update, or a **rollback** to do to them. A failed deploy cannot
+delete what the template never described.
+
+**Check:** prints `PASSED`. If it fails, do not deploy.
+
 ### 3. Bootstrap the account (once per account and region)
 
 ```bash

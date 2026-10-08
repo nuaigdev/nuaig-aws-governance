@@ -34,6 +34,8 @@ npm run sandbox              # ampx sandbox — deploys a personal backend
 npm run sandbox:delete
 npm run seed:showcase        # synthetic sample files; add --dry-run to preview
 npm run prepare:buckets      # client's existing buckets: versioning + CORS (--dry-run first)
+npm run discover:buckets     # read-only: list an account's buckets + print a config skeleton
+npm run verify:stack         # synthesizes locally and proves the stack cannot touch client buckets
 ```
 
 Run a single test file, or one test by name:
@@ -280,7 +282,16 @@ deployment day needs no assessment.
 - **`?next=` is validated** (`src/lib/navigation.ts`). An unvalidated value let
   `/sign-in?next=https://evil.example` redirect a just-authenticated user
   off-site — the cheapest phishing chain against an auth flow.
-- **Before go-live checklist:** `npm run verify` green; client config registered
+- **`npm run verify:stack` is the pre-deploy gate for an `existing` client.** It
+  synthesizes the templates locally (no credentials) and asserts that the storage
+  stack has **zero** resources, that no client bucket is a CloudFormation-managed
+  resource or the target of a bucket policy, and that no `Allow` anywhere grants a
+  destructive or wildcard S3 action on a client bucket. This is what makes "the
+  stack only imports the buckets" a checked fact rather than a claim in a README
+  that quietly decays. It is proven to discriminate: adding `s3:DeleteObject` to
+  the upload actions makes it fail in both the group policy and the boundary.
+- **Before go-live checklist:** `npm run verify` green; `npm run verify:stack` green
+  for the client id; client config registered
   with the real bucket names; client logo in `public/branding/<client-id>/` (or accepted as
   text); upload grants confirmed with the client (start admin-only and widen at
   runtime, never the reverse); `docs/deployment-plan.md` Part C followed in order.
