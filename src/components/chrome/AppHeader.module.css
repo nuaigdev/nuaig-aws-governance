@@ -6,9 +6,13 @@
   z-index: 20;
 }
 
+/**
+ * Full-bleed, unlike the content container below it. The page body reads
+ * better at a fixed max width, but the header is the app's edge — the logo,
+ * nav and user menu should reach the sides of the window, not stop short of
+ * them with a band of background showing past the content on a wide screen.
+ */
 .inner {
-  max-width: var(--content-max);
-  margin: 0 auto;
   padding: 0 var(--space-5);
   height: var(--header-height);
   display: flex;

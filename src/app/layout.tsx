@@ -36,6 +36,16 @@ export const metadata: Metadata = {
   // The portal is behind authentication and holds client data; it should never
   // appear in a search index even if a URL leaks.
   robots: { index: false, follow: false },
+  /**
+   * The browser tab icon follows the active client, the same as the header and
+   * sign-in page. A static `favicon.ico` in `src/app/` cannot vary per
+   * deployment — this app serves many clients from the same codebase — and
+   * leaving one there just shows Next.js's own placeholder icon, which is what
+   * every deployment was doing until now. A client with no logo gets no icon
+   * link at all, which falls back to the browser's default rather than
+   * inventing a mark for them.
+   */
+  icons: activeClient.logo ? { icon: activeClient.logo } : undefined,
 };
 
 export default function RootLayout({
