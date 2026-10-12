@@ -66,7 +66,7 @@ async function fetchPage(token?: string): Promise<AuditPage> {
 
 /** Groups the actions into the categories an admin actually filters by. */
 const ACTION_GROUPS: Record<string, readonly string[]> = {
-  "Sign-in": ["LOGIN", "LOGIN_FAILED", "LOGOUT"],
+  "Sign-in": ["LOGIN", "LOGIN_FAILED", "LOGOUT", "PASSWORD_CHANGED"],
   "File access": [
     "FILE_LIST",
     "FILE_DOWNLOAD",
@@ -80,6 +80,7 @@ const ACTION_GROUPS: Record<string, readonly string[]> = {
     "USER_GROUPS_CHANGED",
     "USER_INVITE_RESENT",
     "USER_PASSWORD_RESET",
+    "USER_PROFILE_UPDATED",
     "GROUP_ACCESS_VIEWED",
     "GROUP_ACCESS_CHANGED",
   ],

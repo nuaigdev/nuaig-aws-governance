@@ -20,6 +20,8 @@ export interface PortalSession {
   readonly email: string;
   readonly givenName: string;
   readonly familyName: string;
+  /** Optional job title from `custom:jobTitle`. Empty when never set. */
+  readonly jobTitle: string;
   readonly groups: readonly string[];
   readonly isAdmin: boolean;
   readonly buckets: readonly EffectiveBucketAccess[];
@@ -62,6 +64,7 @@ export async function loadSession(
     email: claimString(claims, "email"),
     givenName: claimString(claims, "given_name"),
     familyName: claimString(claims, "family_name"),
+    jobTitle: claimString(claims, "custom:jobTitle"),
     groups,
     isAdmin: configIsAdmin(activeClient, groups),
     buckets: accessibleBuckets(activeClient, groups),

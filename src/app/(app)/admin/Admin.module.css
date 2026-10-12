@@ -259,3 +259,9 @@
   font-size: 0.8125rem;
   color: var(--ink-muted);
 }
+
+/* Job title, under the name in the user table. */
+.userTitle {
+  font-size: 0.8125rem;
+  color: var(--ink);
+}

@@ -284,8 +284,21 @@ deployment day needs no assessment.
   itself — so the script reports any expiration rule rather than implying it is
   covered.
 - **Sessions:** 30 min idle sign-out in the UI, short access tokens, 12 h refresh.
-- **Admin password reset** exists (Users page → Reset password), audited as
-  `USER_PASSWORD_RESET`.
+- **Password management is three separate paths, by design:** an admin resets
+  someone else's (Users → Reset password, emails a code, audited as
+  `USER_PASSWORD_RESET`); a user who is signed in changes their own
+  (`/account`, requires the current password, audited as `PASSWORD_CHANGED`);
+  and a user who is locked out uses **Forgot your password?** on sign-in. Only
+  the first involves an administrator, and none of them ever expose a password
+  to anyone but its owner.
+- **`custom:jobTitle`** is an optional Cognito attribute, set by an admin on
+  create or via Users → Edit, shown beside a person's name. Named `jobTitle`
+  rather than `role` because "role" already means an IAM role and a Cognito
+  group here — the access mechanism — and a `custom:role` label would read as
+  though it granted something. **A custom attribute can never be removed from a
+  user pool**, which is why it was added before the first client deploy. Email
+  is immutable on the pool and no admin operation can change it: every audit
+  entry is tied to it.
 - **Download hardening:** signed URLs force `Content-Disposition` and pin
   `Content-Type` (`src/lib/storage/download-policy.ts`). Inline preview is an
   allowlist — never SVG or HTML — because a client's buckets hold files this

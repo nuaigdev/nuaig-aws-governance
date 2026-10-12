@@ -5,6 +5,7 @@ import {
   confirmSignIn,
   resetPassword,
   signIn,
+  updatePassword,
   type SignInOutput,
 } from "aws-amplify/auth";
 
@@ -213,6 +214,34 @@ export async function completePasswordReset(
       newPassword,
     });
   } catch (error) {
+    throw describeAuthError(error);
+  }
+}
+
+/**
+ * Changes the signed-in user's own password.
+ *
+ * Distinct from the reset flow: this requires the current password, so it is
+ * usable by someone who knows their password and wants a new one, and it does
+ * not involve an emailed code. Cognito verifies the old password, so a
+ * hijacked session cannot silently rotate the credential without it.
+ *
+ * MFA is unaffected — the authenticator enrolment survives a password change.
+ */
+export async function changeOwnPassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  try {
+    await updatePassword({ oldPassword: currentPassword, newPassword });
+  } catch (error) {
+    // `describeAuthError` maps NotAuthorizedException to "Incorrect email or
+    // password", which is deliberately vague to stop account enumeration at
+    // sign-in. Here the account is already known, so that wording would just
+    // be confusing: say which password was wrong.
+    if ((error as { name?: string })?.name === "NotAuthorizedException") {
+      throw new AuthError("Your current password is not correct.", "NotAuthorizedException");
+    }
     throw describeAuthError(error);
   }
 }

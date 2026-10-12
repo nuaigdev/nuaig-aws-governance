@@ -26,6 +26,16 @@ const CLIENT_RECORDABLE_ACTIONS = new Set([
   "FILE_UPLOAD",
   "FILE_UPLOAD_REJECTED_COLLISION",
   "ACCESS_DENIED",
+  /**
+   * A user changing their own password. Safe to accept from the browser: the
+   * actor comes from the verified JWT, so the worst a caller can do is log a
+   * change of *their own* password that did not happen — which is noise in
+   * their own history, not a forged record against anybody else.
+   *
+   * `USER_PASSWORD_RESET` stays absent: that is an administrator acting on
+   * someone else and is written inside `admin-users`.
+   */
+  "PASSWORD_CHANGED",
 ]);
 
 type Arguments = {

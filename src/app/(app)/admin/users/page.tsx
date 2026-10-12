@@ -28,6 +28,7 @@ import {
   resendInvite,
   resetUserPassword,
   setUserGroups,
+  updateUserProfile,
   type PortalUser,
 } from "@/lib/admin";
 import { useSession } from "@/lib/auth/SessionProvider";
@@ -58,6 +59,7 @@ export default function UsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editing, setEditing] = useState<PortalUser | null>(null);
   const [resetting, setResetting] = useState<PortalUser | null>(null);
+  const [editingProfile, setEditingProfile] = useState<PortalUser | null>(null);
 
   async function run(username: string, action: () => Promise<unknown>, success: string) {
     setBusyUser(username);
@@ -223,6 +225,9 @@ export default function UsersPage() {
                               </>
                             )}
                           </div>
+                          {user.jobTitle && (
+                            <div className={styles.userTitle}>{user.jobTitle}</div>
+                          )}
                           <div className={styles.userEmail}>{user.email}</div>
                         </div>
                       </td>
@@ -252,6 +257,13 @@ export default function UsersPage() {
                       </td>
                       <td>
                         <div className={styles.rowActions}>
+                          <Button
+                            small
+                            onClick={() => setEditingProfile(user)}
+                            disabled={busyUser === user.username}
+                          >
+                            Edit
+                          </Button>
                           <Button
                             small
                             onClick={() => setEditing(user)}
@@ -362,6 +374,18 @@ export default function UsersPage() {
         </Dialog>
       )}
 
+      {editingProfile && (
+        <EditProfileDialog
+          user={editingProfile}
+          onClose={() => setEditingProfile(null)}
+          onSaved={async (email) => {
+            setEditingProfile(null);
+            setNotice(`Details updated for ${email}.`);
+            await load();
+          }}
+        />
+      )}
+
       {editing && (
         <EditGroupsDialog
           user={editing}
@@ -408,11 +432,13 @@ function CreateUserDialog({
   const emailId = useId();
   const givenId = useId();
   const familyId = useId();
+  const titleId = useId();
 
   const [step, setStep] = useState<CreateStep>("details");
   const [email, setEmail] = useState("");
   const [givenName, setGivenName] = useState("");
   const [familyName, setFamilyName] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
   const [groups, setGroups] = useState<string[]>([]);
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -420,13 +446,14 @@ function CreateUserDialog({
 
   const emailValid = EMAIL_PATTERN.test(email.trim());
   const emailInvalid = touched && email.trim() !== "" && !emailValid;
-  const detailsValid = emailValid && givenName.trim() !== "" && familyName.trim() !== "";
+  const detailsValid =
+    emailValid && givenName.trim() !== "" && familyName.trim() !== "" && jobTitle.length <= 128;
 
   async function submit() {
     setBusy(true);
     setError(null);
     try {
-      await createUser({ email, givenName, familyName, groups });
+      await createUser({ email, givenName, familyName, jobTitle, groups });
       await onCreated(email.trim().toLowerCase());
     } catch (caught) {
       setError(messageFor(caught, "The user could not be created."));
@@ -507,6 +534,22 @@ function CreateUserDialog({
               disabled={busy}
             />
           </Field>
+
+          <Field
+            label="Job title (optional)"
+            htmlFor={titleId}
+            hint="Shown beside their name in the user list and the audit log."
+            error={jobTitle.length > 128 ? "Keep this under 128 characters." : null}
+          >
+            <TextInput
+              id={titleId}
+              value={jobTitle}
+              invalid={jobTitle.length > 128}
+              placeholder="e.g. Director of Clinical Services"
+              onChange={(event) => setJobTitle(event.target.value)}
+              disabled={busy}
+            />
+          </Field>
         </>
       )}
 
@@ -526,6 +569,12 @@ function CreateUserDialog({
               <dt>Name</dt>
               <dd>{`${givenName.trim()} ${familyName.trim()}`}</dd>
             </div>
+            {jobTitle.trim() !== "" && (
+              <div>
+                <dt>Title</dt>
+                <dd>{jobTitle.trim()}</dd>
+              </div>
+            )}
             <div>
               <dt>Email</dt>
               <dd className="data">{email.trim().toLowerCase()}</dd>
@@ -553,6 +602,101 @@ function CreateUserDialog({
           </p>
         </div>
       )}
+    </Dialog>
+  );
+}
+
+function EditProfileDialog({
+  user,
+  onClose,
+  onSaved,
+}: {
+  user: PortalUser;
+  onClose: () => void;
+  onSaved: (email: string) => void | Promise<void>;
+}) {
+  const givenId = useId();
+  const familyId = useId();
+  const titleId = useId();
+
+  const [givenName, setGivenName] = useState(user.givenName);
+  const [familyName, setFamilyName] = useState(user.familyName);
+  const [jobTitle, setJobTitle] = useState(user.jobTitle ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const changed =
+    givenName !== user.givenName ||
+    familyName !== user.familyName ||
+    jobTitle !== (user.jobTitle ?? "");
+
+  const valid = givenName.trim() !== "" && familyName.trim() !== "" && jobTitle.length <= 128;
+
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    try {
+      await updateUserProfile({ username: user.username, givenName, familyName, jobTitle });
+      await onSaved(user.email);
+    } catch (caught) {
+      setError(messageFor(caught, "The details could not be updated."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      title={`Edit ${user.email}`}
+      onClose={onClose}
+      busy={busy}
+      confirmLabel="Save details"
+      canConfirm={changed && valid && !busy}
+      onConfirm={submit}
+    >
+      {error && <Message tone="error">{error}</Message>}
+
+      <Field label="First name" htmlFor={givenId}>
+        <TextInput
+          id={givenId}
+          required
+          autoFocus
+          value={givenName}
+          onChange={(event) => setGivenName(event.target.value)}
+          disabled={busy}
+        />
+      </Field>
+
+      <Field label="Last name" htmlFor={familyId}>
+        <TextInput
+          id={familyId}
+          required
+          value={familyName}
+          onChange={(event) => setFamilyName(event.target.value)}
+          disabled={busy}
+        />
+      </Field>
+
+      <Field
+        label="Job title (optional)"
+        htmlFor={titleId}
+        hint="Shown beside their name in the user list and the audit log."
+        error={jobTitle.length > 128 ? "Keep this under 128 characters." : null}
+      >
+        <TextInput
+          id={titleId}
+          value={jobTitle}
+          invalid={jobTitle.length > 128}
+          placeholder="e.g. Director of Clinical Services"
+          onChange={(event) => setJobTitle(event.target.value)}
+          disabled={busy}
+        />
+      </Field>
+
+      <p className="muted" style={{ fontSize: "0.8125rem" }}>
+        The email address cannot be changed — it is the sign-in identifier and
+        every audit entry is tied to it. Offboard and re-invite instead.
+      </p>
     </Dialog>
   );
 }

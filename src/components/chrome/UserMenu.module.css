@@ -93,6 +93,7 @@
 
 .item {
   display: block;
+  text-decoration: none;
   width: 100%;
   text-align: left;
   background: none;

@@ -46,6 +46,32 @@ export const auth = defineAuth({
       required: true,
       mutable: true,
     },
+
+    /**
+     * Job title, shown beside a person's name so an administrator reviewing the
+     * user list or the audit log can tell who someone is.
+     *
+     * ## Three decisions worth knowing, because two of them are permanent
+     *
+     * 1. **Optional.** `required: false` — a pool cannot later relax a required
+     *    attribute, and an admin who does not know someone's title must still be
+     *    able to create the account.
+     * 2. **Named `jobTitle`, not `role`.** In this product "role" already means
+     *    an IAM role and a Cognito group, which is the access mechanism. A
+     *    `custom:role` attribute sitting next to that would read as though it
+     *    granted something. It grants nothing; it is a label.
+     * 3. **A custom attribute can never be removed from a user pool.** Not
+     *    renamed, not deleted — only ignored. So this is added before the first
+     *    client deploy rather than after, and the name is chosen once.
+     */
+    "custom:jobTitle": {
+      dataType: "String",
+      mutable: true,
+      // Cognito requires a bound; 128 is long enough for "Director of Clinical
+      // Services, Eastern Region" without inviting a paragraph.
+      maxLen: 128,
+      minLen: 0,
+    },
   },
 
   // Admins create users; nobody self-registers into a client's data portal.

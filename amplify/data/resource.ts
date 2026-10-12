@@ -47,6 +47,8 @@ const auditAction = a.enum([
   "USER_GROUPS_CHANGED",
   "USER_INVITE_RESENT",
   "USER_PASSWORD_RESET",
+  "USER_PROFILE_UPDATED",
+  "PASSWORD_CHANGED",
   "GROUP_ACCESS_VIEWED",
   "GROUP_ACCESS_CHANGED",
   // Anything the portal refused

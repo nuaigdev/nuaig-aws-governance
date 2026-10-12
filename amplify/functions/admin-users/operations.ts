@@ -24,6 +24,8 @@ export interface PortalUser {
   readonly email: string;
   readonly givenName: string;
   readonly familyName: string;
+  /** Optional job title. Empty string when never set. */
+  readonly jobTitle: string;
   readonly enabled: boolean;
   readonly status: UserStatus;
   readonly groups: readonly string[];
@@ -40,6 +42,7 @@ export type ManageUsersOperation =
       readonly email: string;
       readonly givenName: string;
       readonly familyName: string;
+      readonly jobTitle: string;
       readonly groups: readonly string[];
     }
   | { readonly operation: "disableUser"; readonly username: string }
@@ -50,7 +53,14 @@ export type ManageUsersOperation =
       readonly groups: readonly string[];
     }
   | { readonly operation: "resendInvite"; readonly username: string }
-  | { readonly operation: "resetPassword"; readonly username: string };
+  | { readonly operation: "resetPassword"; readonly username: string }
+  | {
+      readonly operation: "updateProfile";
+      readonly username: string;
+      readonly givenName: string;
+      readonly familyName: string;
+      readonly jobTitle: string;
+    };
 
 export class OperationError extends Error {
   constructor(
@@ -71,6 +81,7 @@ const KNOWN_OPERATIONS = new Set([
   "setUserGroups",
   "resendInvite",
   "resetPassword",
+  "updateProfile",
 ]);
 
 /**
@@ -104,9 +115,19 @@ export function parseOperation(
         email,
         givenName: requireString(input.givenName, "givenName").trim(),
         familyName: requireString(input.familyName, "familyName").trim(),
+        jobTitle: optionalJobTitle(input.jobTitle),
         groups: validateGroups(input.groups),
       };
     }
+
+    case "updateProfile":
+      return {
+        operation: "updateProfile",
+        username: requireString(input.username, "username"),
+        givenName: requireString(input.givenName, "givenName").trim(),
+        familyName: requireString(input.familyName, "familyName").trim(),
+        jobTitle: optionalJobTitle(input.jobTitle),
+      };
 
     case "setUserGroups":
       return {
@@ -127,6 +148,26 @@ export function parseOperation(
     default:
       throw new OperationError(`Unknown operation "${operation}".`);
   }
+}
+
+/**
+ * Job title is optional, so absent, null and blank all mean "not set".
+ *
+ * Trimmed and length-capped to match the pool's own constraint, so an
+ * over-long value fails here with a readable message rather than as an opaque
+ * `InvalidParameterException` from Cognito.
+ */
+function optionalJobTitle(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string") {
+    throw new OperationError(`"jobTitle" must be text if it is provided.`);
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length > 128) {
+    throw new OperationError(`A job title cannot be longer than 128 characters.`);
+  }
+  return trimmed;
 }
 
 function requireString(value: unknown, field: string): string {

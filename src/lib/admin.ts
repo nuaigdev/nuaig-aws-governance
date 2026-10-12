@@ -18,6 +18,7 @@ export interface PortalUser {
   readonly email: string;
   readonly givenName: string;
   readonly familyName: string;
+  readonly jobTitle: string;
   readonly enabled: boolean;
   readonly status:
     | "CONFIRMED"
@@ -99,9 +100,19 @@ export function createUser(input: {
   email: string;
   givenName: string;
   familyName: string;
+  jobTitle?: string;
   groups: readonly string[];
 }): Promise<PortalUser> {
   return callUsers<PortalUser>("createUser", input);
+}
+
+export function updateUserProfile(input: {
+  username: string;
+  givenName: string;
+  familyName: string;
+  jobTitle?: string;
+}): Promise<{ username: string }> {
+  return callUsers("updateProfile", input);
 }
 
 export function disableUser(username: string): Promise<{ username: string }> {

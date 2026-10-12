@@ -34,6 +34,23 @@ applies immediately.
 
 To change what a *group* can reach, use **Groups** in the top menu.
 
+## Changing your own password
+
+Open the user menu (top right) → **Your account** → **Change your password**.
+You need your current password. You stay signed in, and your authenticator app
+is unaffected.
+
+Everyone has this page, not just administrators.
+
+## Editing someone's name or job title
+
+**Users → Edit** on their row. The job title is optional and shows beside their
+name in the user list and the audit log.
+
+The email address cannot be changed — it is the sign-in identifier and every
+audit entry is tied to it. If someone's email really changes, create a new
+account and disable the old one.
+
 ## Someone forgot their password
 
 Two ways, both end with the person choosing their own new password:

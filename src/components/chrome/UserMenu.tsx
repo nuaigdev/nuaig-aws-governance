@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { activeClient } from "@config/index";
@@ -75,6 +76,15 @@ export function UserMenu() {
               )}
             </div>
           </div>
+
+          <Link
+            href="/account"
+            className={styles.item}
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            Your account
+          </Link>
 
           <button
             type="button"

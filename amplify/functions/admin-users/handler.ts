@@ -6,6 +6,7 @@ import {
   AdminGetUserCommand,
   AdminListGroupsForUserCommand,
   AdminRemoveUserFromGroupCommand,
+  AdminUpdateUserAttributesCommand,
   AdminResetUserPasswordCommand,
   AdminUserGlobalSignOutCommand,
   CognitoIdentityProviderClient,
@@ -42,6 +43,9 @@ Amplify.configure(resourceConfig, libraryOptions);
 const data = generateClient<Schema>();
 const cognito = new CognitoIdentityProviderClient();
 const USER_POOL_ID = env.AMPLIFY_AUTH_USERPOOL_ID;
+
+/** Must match the custom attribute declared in `amplify/auth/resource.ts`. */
+const JOB_TITLE_ATTRIBUTE = "custom:jobTitle";
 
 export const handler = async (
   event: AppSyncResolverEvent<{ operation: string; payload: unknown }>,
@@ -84,6 +88,9 @@ export const handler = async (
 
       case "resetPassword":
         return await resetPassword(request.username, caller);
+
+      case "updateProfile":
+        return await updateProfile(request, caller);
     }
   } catch (error) {
     if (error instanceof OperationError) {
@@ -148,6 +155,9 @@ async function createUser(
         { Name: "email_verified", Value: "true" },
         { Name: "given_name", Value: request.givenName },
         { Name: "family_name", Value: request.familyName },
+        // Cognito rejects an empty value for a custom attribute on create, so
+        // an unset title is omitted rather than sent as "".
+        ...(request.jobTitle ? [{ Name: JOB_TITLE_ATTRIBUTE, Value: request.jobTitle }] : []),
       ],
       // Cognito emails the temporary password. The user is forced to change it
       // and enrol in TOTP on first sign-in.
@@ -310,6 +320,45 @@ async function resendInvite(username: string, caller: ReturnType<typeof resolveC
 }
 
 /**
+ * Updates a user's name and job title.
+ *
+ * Deliberately cannot touch email: it is the sign-in identifier and is declared
+ * immutable on the pool, so changing it would orphan the audit trail that names
+ * the person. A genuine email change is a new account plus an offboard.
+ */
+async function updateProfile(
+  request: Extract<ReturnType<typeof parseOperation>, { operation: "updateProfile" }>,
+  caller: ReturnType<typeof resolveCaller>,
+) {
+  await cognito.send(
+    new AdminUpdateUserAttributesCommand({
+      UserPoolId: USER_POOL_ID,
+      Username: request.username,
+      UserAttributes: [
+        { Name: "given_name", Value: request.givenName },
+        { Name: "family_name", Value: request.familyName },
+        // Clearing a title is a legitimate edit, and Cognito accepts "" on an
+        // update even though it rejects it on create.
+        { Name: JOB_TITLE_ATTRIBUTE, Value: request.jobTitle },
+      ],
+    }),
+  );
+
+  await writeAuditEvent(data, activeClient.clientId, caller, {
+    action: "USER_PROFILE_UPDATED",
+    outcome: "SUCCESS",
+    targetUser: request.username,
+    detail: {
+      givenName: request.givenName,
+      familyName: request.familyName,
+      jobTitle: request.jobTitle || null,
+    },
+  });
+
+  return { username: request.username };
+}
+
+/**
  * Starts a password reset for a user who has forgotten theirs.
  *
  * The admin never sees, sets or chooses the new password. Cognito emails the
@@ -465,6 +514,7 @@ function toPortalUser(
     email: attr(user, "email"),
     givenName: attr(user, "given_name"),
     familyName: attr(user, "family_name"),
+    jobTitle: attr(user, JOB_TITLE_ATTRIBUTE),
     enabled: user.Enabled ?? false,
     status: normaliseStatus(user.UserStatus),
     groups: [...groups],
