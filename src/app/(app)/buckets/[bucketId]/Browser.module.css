@@ -94,6 +94,10 @@
   white-space: nowrap;
 }
 
+.tableFade {
+  transition: opacity 150ms ease;
+}
+
 /* Table cells */
 
 .nameCell {

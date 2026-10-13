@@ -260,11 +260,13 @@ export function SortableHeader<K extends string>({
         onClick={() => onSort(columnKey)}
       >
         {label}
-        {active && (
-          <span className={styles.sortIndicator} aria-hidden="true">
-            {direction === "asc" ? "▲" : "▼"}
-          </span>
-        )}
+        <span
+          className={styles.sortIndicator}
+          aria-hidden="true"
+          style={{ visibility: active ? "visible" : "hidden" }}
+        >
+          {active && direction === "desc" ? "▼" : "▲"}
+        </span>
       </button>
     </th>
   );

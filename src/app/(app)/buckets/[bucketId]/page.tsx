@@ -67,7 +67,9 @@ function BucketBrowser() {
   const setPrefix = useCallback(
     (next: string) => {
       const base = `/buckets/${params.bucketId}`;
-      router.push(next === "" ? base : `${base}?path=${encodeURIComponent(next)}`);
+      router.push(next === "" ? base : `${base}?path=${encodeURIComponent(next)}`, {
+        scroll: false,
+      });
     },
     [router, params.bucketId],
   );
@@ -248,50 +250,52 @@ function BucketBrowser() {
 
   const segments = prefix.split("/").filter(Boolean);
 
+  const breadcrumbs = (
+    <nav className={styles.breadcrumbs} aria-label="Location">
+      <Link href="/buckets" className={styles.crumb}>
+        Buckets
+      </Link>
+      <span className={styles.crumbSeparator} aria-hidden="true">
+        /
+      </span>
+      {segments.length === 0 ? (
+        <span className={styles.crumbCurrent} aria-current="page">
+          {bucket.label}
+        </span>
+      ) : (
+        <button type="button" className={styles.crumb} onClick={() => setPrefix("")}>
+          {bucket.label}
+        </button>
+      )}
+      {segments.map((segment, index) => {
+        const isLast = index === segments.length - 1;
+        const target = `${segments.slice(0, index + 1).join("/")}/`;
+        return (
+          <span key={target} style={{ display: "contents" }}>
+            <span className={styles.crumbSeparator} aria-hidden="true">
+              /
+            </span>
+            {isLast ? (
+              <span className={styles.crumbCurrent} aria-current="page">
+                {segment}
+              </span>
+            ) : (
+              <button
+                type="button"
+                className={styles.crumb}
+                onClick={() => setPrefix(target)}
+              >
+                {segment}
+              </button>
+            )}
+          </span>
+        );
+      })}
+    </nav>
+  );
+
   return (
     <>
-      <nav className={styles.breadcrumbs} aria-label="Location">
-        <Link href="/buckets" className={styles.crumb}>
-          Buckets
-        </Link>
-        <span className={styles.crumbSeparator} aria-hidden="true">
-          /
-        </span>
-        {segments.length === 0 ? (
-          <span className={styles.crumbCurrent} aria-current="page">
-            {bucket.label}
-          </span>
-        ) : (
-          <button type="button" className={styles.crumb} onClick={() => setPrefix("")}>
-            {bucket.label}
-          </button>
-        )}
-        {segments.map((segment, index) => {
-          const isLast = index === segments.length - 1;
-          const target = `${segments.slice(0, index + 1).join("/")}/`;
-          return (
-            <span key={target} style={{ display: "contents" }}>
-              <span className={styles.crumbSeparator} aria-hidden="true">
-                /
-              </span>
-              {isLast ? (
-                <span className={styles.crumbCurrent} aria-current="page">
-                  {segment}
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  className={styles.crumb}
-                  onClick={() => setPrefix(target)}
-                >
-                  {segment}
-                </button>
-              )}
-            </span>
-          );
-        })}
-      </nav>
-
       <PageHeading
         bucketLabel={bucket.label}
         sensitivity={bucket.sensitivity}
@@ -405,6 +409,8 @@ function BucketBrowser() {
         </div>
       )}
 
+      {breadcrumbs}
+
       {/* Toolbar */}
       <div className={styles.toolbar}>
         <div className={styles.search}>
@@ -425,7 +431,7 @@ function BucketBrowser() {
       </div>
 
       <Card flush>
-        {loading ? (
+        {loading && entries.length === 0 ? (
           <EmptyState title="Loading…">Reading the bucket contents.</EmptyState>
         ) : visible.length === 0 ? (
           <EmptyState
@@ -439,6 +445,7 @@ function BucketBrowser() {
           </EmptyState>
         ) : (
           <TableWrap>
+            <div className={styles.tableFade} style={{ opacity: loading ? 0.45 : 1 }}>
             <Table>
               <thead>
                 <tr>
@@ -526,6 +533,7 @@ function BucketBrowser() {
                 ))}
               </tbody>
             </Table>
+            </div>
           </TableWrap>
         )}
       </Card>
