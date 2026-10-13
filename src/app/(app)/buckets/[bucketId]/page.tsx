@@ -16,6 +16,7 @@ import {
   Table,
   TableWrap,
   TextInput,
+  uiStyles,
   type SortDirection,
 } from "@/components/ui";
 import { useSession } from "@/lib/auth/SessionProvider";
@@ -514,10 +515,10 @@ function BucketBrowser() {
                         )}
                       </div>
                     </td>
-                    <td className="data" style={{ textAlign: "right" }}>
+                    <td className={uiStyles.numeric}>
                       {entry.isFolder ? "—" : formatBytes(entry.size)}
                     </td>
-                    <td className="data" style={{ textAlign: "right" }}>
+                    <td className={uiStyles.numeric}>
                       {entry.isFolder ? "—" : formatDateTime(entry.lastModified)}
                     </td>
                     <td>

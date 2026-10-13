@@ -16,6 +16,7 @@ import {
   Table,
   TableWrap,
   TextInput,
+  uiStyles,
   type BadgeTone,
   type SortDirection,
 } from "@/components/ui";
@@ -250,7 +251,7 @@ export default function UsersPage() {
                       <td>
                         <Badge tone={statusTone(user)}>{statusLabel(user)}</Badge>
                       </td>
-                      <td className="data" style={{ textAlign: "right" }}>
+                      <td className={uiStyles.numeric}>
                         <span title={formatDateTime(user.lastLoginAt)}>
                           {formatRelative(user.lastLoginAt)}
                         </span>

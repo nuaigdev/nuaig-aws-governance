@@ -9,8 +9,6 @@
 }
 
 .inner {
-  max-width: var(--content-max);
-  margin: 0 auto;
   padding: var(--space-5);
   display: flex;
   align-items: center;

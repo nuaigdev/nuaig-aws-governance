@@ -280,7 +280,7 @@
   background: var(--surface-sunken);
 }
 
-.numeric {
+.table .numeric {
   text-align: right;
   font-family: var(--font-mono);
   font-size: 0.8125rem;
