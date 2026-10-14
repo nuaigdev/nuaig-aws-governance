@@ -40,6 +40,7 @@ const auditAction = a.enum([
   "FILE_DOWNLOAD",
   "FILE_UPLOAD",
   "FILE_UPLOAD_REJECTED_COLLISION",
+  "FILE_UPLOAD_REJECTED_TYPE",
   // Administration
   "USER_CREATED",
   "USER_DISABLED",
@@ -160,6 +161,26 @@ const schema = a
       .returns(a.json())
       .authorization((allow) => [allow.groups([ADMIN_GROUP])])
       .handler(a.handler.function(adminUsersFunction)),
+
+    /**
+     * The caller's own effective bucket access, read from live IAM.
+     *
+     * Exists because an administrator can widen a group at runtime, and the
+     * client config the UI is built against does not know about that. Without
+     * this, a runtime grant would change what S3 permits while the browser kept
+     * rendering the deploy-time answer — the upload button would stay hidden on
+     * a bucket the user may now upload to.
+     *
+     * Safe for any authenticated caller: the handler takes the groups from the
+     * verified JWT, never from an argument, so it can only ever answer for the
+     * caller's own groups. It is a query, not a mutation, and the handler path
+     * it reaches writes nothing.
+     */
+    myBucketAccess: a
+      .query()
+      .returns(a.json())
+      .authorization((allow) => [allow.authenticated()])
+      .handler(a.handler.function(adminGroupsFunction)),
 
     /** Admin-only group inspection and membership changes. */
     manageGroups: a

@@ -9,6 +9,7 @@ import { recordDataAccess } from "@/lib/audit";
 
 import { downloadPresentation } from "./download-policy";
 import { joinKey, nextAvailableKey, sanitiseFileName } from "./keys";
+import { checkUploadType } from "./upload-policy";
 
 /**
  * S3 operations, scoped to one bucket.
@@ -66,6 +67,20 @@ export class AccessDeniedError extends Error {
   constructor(bucketId: string) {
     super(`You do not have access to the "${bucketId}" bucket.`);
     this.name = "AccessDeniedError";
+  }
+}
+
+/**
+ * The portal refused the file itself — not the user's access to the bucket.
+ *
+ * Separate from `AccessDeniedError` so the UI can say which it was: "this file
+ * type is not accepted" and "you cannot upload here" are different problems
+ * with different fixes.
+ */
+export class UploadRejectedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UploadRejectedError";
   }
 }
 
@@ -251,6 +266,24 @@ export async function uploadFile(
       detail: { attempted: "upload", fileName: file.name },
     });
     throw new AccessDeniedError(bucketId);
+  }
+
+  // Checked before anything reaches S3, so a refused file is never written and
+  // then reasoned about afterwards. See `upload-policy.ts` for what this does
+  // and does not guarantee.
+  const verdict = checkUploadType(file.name);
+  if (!verdict.allowed) {
+    await recordDataAccess({
+      action: "FILE_UPLOAD_REJECTED_TYPE",
+      outcome: "DENIED",
+      bucketId,
+      detail: {
+        fileName: file.name,
+        extension: verdict.extension,
+        prefix,
+      },
+    });
+    throw new UploadRejectedError(verdict.message);
   }
 
   const target = bucketTarget(bucketId);

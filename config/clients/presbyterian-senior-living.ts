@@ -19,17 +19,21 @@ import type { ClientConfig } from "../types";
  * control: no script, IAM policy or permissions boundary generated from this
  * config ever references them.
  *
- * ## Everyone is read-only to start, deliberately
+ * ## Only the administrator may upload
  *
- * Uploads are rare and these buckets hold PHI and single-copy records, so no
- * group — including the administrator — holds `read-upload`. That is the most
- * restrictive start, and it costs nothing to widen: an administrator can grant
- * `read-upload` to a group from the Groups page at runtime, without a code
- * change or a deploy. Starting permissive and narrowing later is the direction
- * that needs a deploy, and leaves an unnecessary write grant live meanwhile.
+ * These buckets hold PHI and single-copy records, so upload starts with the
+ * administrator group alone. Every other group is read-only until an
+ * administrator widens it from the Groups page at runtime — no code change, no
+ * deploy. Starting permissive and narrowing later is the direction that needs a
+ * deploy, and leaves an unnecessary write grant live meanwhile.
  *
- * Administrator still manages users, groups and the audit log. That runs
- * through the app's own API, not S3, so read-only S3 access does not limit it.
+ * Upload never means overwrite: `s3:DeleteObject` is absent from every policy
+ * this repo can generate, the upload path renames on collision, and versioning
+ * is enabled on both buckets, so a PutObject issued outside the portal still
+ * leaves the previous version intact.
+ *
+ * Managing users, groups and the audit log runs through the app's own API
+ * rather than S3, so a group's bucket mode never affects it either way.
  *
  * Descriptions are intentionally generic and are expected to be reworded with
  * the client after the first demonstration.
@@ -61,9 +65,10 @@ export const clientConfig: ClientConfig = {
     {
       id: "admin",
       label: "Administrator",
-      description: "Manages users, groups and the audit log. Reads every bucket.",
+      description:
+        "Manages users, groups and the audit log. Reads and uploads to every bucket.",
       isAdmin: true,
-      bucketAccess: [{ bucketId: "*", mode: "read" }],
+      bucketAccess: [{ bucketId: "*", mode: "read-upload" }],
     },
     {
       id: "amazon-psl-bucket",

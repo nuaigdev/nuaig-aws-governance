@@ -25,11 +25,16 @@ import { SENSITIVE_BUCKET_NOTICE, UPLOAD_NOTICE } from "@/lib/notices";
 import { fileExtension, formatBytes, formatDateTime, pluralise } from "@/lib/format";
 import {
   AccessDeniedError,
+  UploadRejectedError,
   getDownloadUrl,
   listEntries,
   uploadFile,
   type StorageEntry,
 } from "@/lib/storage/operations";
+import {
+  ALLOWED_UPLOAD_LABEL,
+  UPLOAD_ACCEPT_ATTRIBUTE,
+} from "@/lib/storage/upload-policy";
 
 import styles from "./Browser.module.css";
 
@@ -236,7 +241,8 @@ function BucketBrowser() {
                   ...upload,
                   status: "failed",
                   message:
-                    caught instanceof AccessDeniedError
+                    caught instanceof AccessDeniedError ||
+                    caught instanceof UploadRejectedError
                       ? caught.message
                       : "Upload failed. Please try again.",
                 }
@@ -333,6 +339,7 @@ function BucketBrowser() {
             type="file"
             multiple
             hidden
+            accept={UPLOAD_ACCEPT_ATTRIBUTE}
             onChange={(event) => {
               void handleFiles(event.target.files);
               event.target.value = "";
@@ -355,8 +362,13 @@ function BucketBrowser() {
               Choose files
             </Button>
             <p className={styles.dropHint}>
-              or drop them here. {UPLOAD_NOTICE} A file whose name already exists
-              is stored alongside the original, never over it.
+              or drop them here. Files are uploaded into{" "}
+              <span className="data">
+                {segments.length === 0 ? bucket.label : segments.join("/")}
+              </span>
+              , the folder you are viewing. {ALLOWED_UPLOAD_LABEL} files only.{" "}
+              {UPLOAD_NOTICE} A file whose name already exists is stored
+              alongside the original, never over it.
             </p>
           </div>
         </>

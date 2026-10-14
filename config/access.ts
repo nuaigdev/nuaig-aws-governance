@@ -27,6 +27,19 @@ const MODE_RANK: Readonly<Record<AccessMode, number>> = {
 };
 
 /**
+ * The more permissive of two modes.
+ *
+ * Exported because the same union has to be applied to *live* IAM grants when
+ * resolving a user's effective access across their groups — see the
+ * `myBucketAccess` path in `admin-groups`. Keeping the rank in one place is
+ * what stops the live resolver and this module from disagreeing about what
+ * belonging to two groups means.
+ */
+export function mergeAccessModes(a: AccessMode, b: AccessMode): AccessMode {
+  return MODE_RANK[a] >= MODE_RANK[b] ? a : b;
+}
+
+/**
  * A user's resolved access to one bucket.
  */
 export interface EffectiveBucketAccess {

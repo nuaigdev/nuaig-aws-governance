@@ -25,6 +25,7 @@ const CLIENT_RECORDABLE_ACTIONS = new Set([
   "FILE_DOWNLOAD",
   "FILE_UPLOAD",
   "FILE_UPLOAD_REJECTED_COLLISION",
+  "FILE_UPLOAD_REJECTED_TYPE",
   "ACCESS_DENIED",
   /**
    * A user changing their own password. Safe to accept from the browser: the

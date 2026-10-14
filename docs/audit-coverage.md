@@ -20,7 +20,7 @@ not a button in this app.
 | Event | Written by | Forgeable by a user? |
 | --- | --- | --- |
 | `LOGIN` | Cognito post-authentication trigger | No — fires inside the auth flow |
-| `FILE_LIST`, `FILE_DOWNLOAD`, `FILE_UPLOAD`, `FILE_UPLOAD_REJECTED_COLLISION` | `audit-writer`, called by the browser | Actor and time no; the object key yes (see gaps) |
+| `FILE_LIST`, `FILE_DOWNLOAD`, `FILE_UPLOAD`, `FILE_UPLOAD_REJECTED_COLLISION`, `FILE_UPLOAD_REJECTED_TYPE` | `audit-writer`, called by the browser | Actor and time no; the object key yes (see gaps) |
 | `USER_CREATED`, `USER_DISABLED`, `USER_REENABLED`, `USER_GROUPS_CHANGED`, `USER_INVITE_RESENT`, `USER_PASSWORD_RESET` | `admin-users`, inside the operation | No |
 | `GROUP_ACCESS_VIEWED`, `GROUP_ACCESS_CHANGED` | `admin-groups`, inside the operation | No |
 | `ACCESS_DENIED` | whichever handler refused | No |
@@ -54,6 +54,19 @@ authoritative record if that ever matters.
 recorded when the signed URL is minted. The URL is valid for 5 minutes, so a
 logged download may not have completed — or may have been fetched more than once
 within that window.
+
+**A user reading their own access is not recorded.** `myBucketAccess` resolves
+the caller's effective bucket access from live IAM and runs on every sign-in.
+Recording it would add an entry per session that says only "a user asked what
+they may do", burying the events that matter. An administrator *viewing or
+changing anyone's* access is still recorded, as `GROUP_ACCESS_VIEWED` and
+`GROUP_ACCESS_CHANGED`.
+
+**`FILE_UPLOAD_REJECTED_TYPE` records a refusal by the portal, not by S3.** The
+upload allowlist is enforced in the browser before anything is sent, so the
+event proves the portal refused the file — not that nothing was written by some
+other route. See `src/lib/storage/upload-policy.ts` for why IAM cannot enforce
+file type.
 
 **A logging failure does not block the action.** `recordDataAccess` never
 throws: a logging outage must not stop a download a user is entitled to.

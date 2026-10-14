@@ -18,7 +18,7 @@ import type { AppSyncResolverEvent } from "aws-lambda";
 import { env } from "$amplify/env/admin-groups";
 
 import { activeClient } from "../../../config/index";
-import { grantedBuckets } from "../../../config/access";
+import { grantedBuckets, mergeAccessModes } from "../../../config/access";
 import type { AccessMode } from "../../../config/types";
 import type { Schema } from "../../data/resource";
 import { buildBucketPolicy } from "../../shared/bucket-policy";
@@ -47,6 +47,19 @@ export const handler = async (
   event: AppSyncResolverEvent<{ operation: string; payload: unknown }>,
 ): Promise<unknown> => {
   const caller = await withEmail(resolveCaller(event), USER_POOL_ID);
+
+  /**
+   * `myBucketAccess` is the one field here that is not administrative, so it is
+   * answered before the administrator gate below.
+   *
+   * It is safe to expose: the groups come from the verified JWT rather than
+   * from an argument, so a caller can only ever read their own access, and the
+   * path writes nothing — no branch of it reaches `PutRolePolicy`. Every other
+   * field falls through to the gate, which is unchanged.
+   */
+  if (event.info?.fieldName === "myBucketAccess") {
+    return await myBucketAccess(caller.groups);
+  }
 
   if (!caller.groups.includes(ADMIN_GROUP)) {
     await writeAuditEvent(data, activeClient.clientId, caller, {
@@ -130,6 +143,61 @@ async function listGroups(
   });
 
   return views;
+}
+
+/**
+ * The caller's effective access across their own groups, from live IAM.
+ *
+ * Per group, the live inline policy wins and config is the fallback — the same
+ * precedence `listGroups` applies, for the same reason: IAM is what actually
+ * gates S3. Modes are unioned with `mergeAccessModes` so belonging to two
+ * groups means here exactly what it means in `accessibleBuckets`.
+ *
+ * Not audited. It runs on every sign-in and would bury the log in entries about
+ * users reading their own permissions; `GROUP_ACCESS_VIEWED` still covers an
+ * administrator inspecting everyone's.
+ */
+async function myBucketAccess(
+  groupIds: readonly string[],
+): Promise<{ bucketId: string; mode: AccessMode; viaGroups: string[] }[]> {
+  const resolved = new Map<string, { mode: AccessMode; viaGroups: string[] }>();
+
+  for (const groupId of groupIds) {
+    const group = activeClient.groups.find((g) => g.id === groupId);
+    // A group the user carries in Cognito but which no longer exists in config
+    // grants nothing, matching how `accessibleBuckets` ignores unknown groups.
+    if (!group) continue;
+
+    const live = await readLiveAccess(groupId);
+    const grants =
+      live ??
+      grantedBuckets(activeClient, group).map((g) => ({
+        bucketId: g.bucket.id,
+        mode: g.mode,
+      }));
+
+    for (const grant of grants) {
+      const existing = resolved.get(grant.bucketId);
+      if (!existing) {
+        resolved.set(grant.bucketId, { mode: grant.mode, viaGroups: [groupId] });
+        continue;
+      }
+      existing.viaGroups.push(groupId);
+      existing.mode = mergeAccessModes(existing.mode, grant.mode);
+    }
+  }
+
+  // Config order, so the browser's bucket list stays stable and predictable.
+  return activeClient.buckets
+    .filter((bucket) => resolved.has(bucket.id))
+    .map((bucket) => {
+      const entry = resolved.get(bucket.id)!;
+      return {
+        bucketId: bucket.id,
+        mode: entry.mode,
+        viaGroups: [...new Set(entry.viaGroups)],
+      };
+    });
 }
 
 async function setGroupAccess(

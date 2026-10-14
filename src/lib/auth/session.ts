@@ -3,6 +3,8 @@ import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 import { activeClient } from "@config/index";
 import { accessibleBuckets, isAdmin as configIsAdmin } from "@config/access";
 import type { EffectiveBucketAccess } from "@config/access";
+import type { AccessMode } from "@config/types";
+import { getDataClient } from "@/lib/amplify/client";
 
 /**
  * The signed-in user, as the UI understands them.
@@ -66,9 +68,56 @@ export async function loadSession(
     familyName: claimString(claims, "family_name"),
     jobTitle: claimString(claims, "custom:jobTitle"),
     groups,
+    // Administrative capability is a property of the group's definition, not of
+    // its IAM policy, so it stays config-resolved.
     isAdmin: configIsAdmin(activeClient, groups),
-    buckets: accessibleBuckets(activeClient, groups),
+    buckets: await liveBuckets(groups),
   };
+}
+
+/**
+ * The user's bucket access as IAM currently grants it, falling back to config.
+ *
+ * Config is the deploy-time baseline; an administrator can widen a group from
+ * the Groups page afterwards, and only IAM knows about that. Asking the backend
+ * is what keeps the upload button honest — rendering from config alone would
+ * hide upload on a bucket the user may now write to.
+ *
+ * On any failure this falls back to the config answer rather than surfacing an
+ * error. That is the safe direction: config is never more permissive than the
+ * boundary, and a user still cannot do anything S3 itself refuses.
+ */
+async function liveBuckets(
+  groups: readonly string[],
+): Promise<EffectiveBucketAccess[]> {
+  const fromConfig = accessibleBuckets(activeClient, groups);
+
+  try {
+    const result = await getDataClient().queries.myBucketAccess();
+    if (result.errors?.length) return fromConfig;
+
+    const raw = typeof result.data === "string" ? JSON.parse(result.data) : result.data;
+    if (!Array.isArray(raw)) return fromConfig;
+
+    const live = raw as {
+      bucketId: string;
+      mode: AccessMode;
+      viaGroups?: string[];
+    }[];
+
+    return activeClient.buckets
+      .filter((bucket) => live.some((entry) => entry.bucketId === bucket.id))
+      .map((bucket) => {
+        const entry = live.find((e) => e.bucketId === bucket.id)!;
+        return {
+          bucket,
+          mode: entry.mode,
+          viaGroups: entry.viaGroups ?? [],
+        };
+      });
+  } catch {
+    return fromConfig;
+  }
 }
 
 /** Display name, falling back sensibly when the name attributes are empty. */
