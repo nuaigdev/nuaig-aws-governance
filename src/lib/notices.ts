@@ -13,7 +13,7 @@ export const SIGN_IN_NOTICE =
 
 /** Slim banner above a bucket whose config sensitivity is `sensitive`. */
 export const SENSITIVE_BUCKET_NOTICE =
-  "This bucket holds confidential information. Every file you open or download is recorded against your account.";
+  "This bucket holds confidential information. Every file you open, download or upload is recorded against your account, and nothing here can be deleted or replaced through this portal.";
 
 /** Upload dialog. Uploads are permanent because the portal has no delete. */
 export const UPLOAD_NOTICE =

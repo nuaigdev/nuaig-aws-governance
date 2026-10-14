@@ -87,8 +87,7 @@ function BucketBrowser() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [direction, setDirection] = useState<SortDirection>("asc");
   const [uploads, setUploads] = useState<ActiveUpload[]>([]);
-  const [dragging, setDragging] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   const groups = useMemo(() => session?.groups ?? [], [session]);
   const canUploadHere = access?.mode === "read-upload";
@@ -257,6 +256,12 @@ function BucketBrowser() {
 
   const segments = prefix.split("/").filter(Boolean);
 
+  // What the upload dialog names as the destination. The prefix is the real
+  // target, so it is shown verbatim rather than described — "the folder you are
+  // viewing" is not something to take on trust when the file cannot be removed
+  // afterwards.
+  const folderLabel = prefix === "" ? `${bucket.label} (root)` : prefix;
+
   const breadcrumbs = (
     <nav className={styles.breadcrumbs} aria-label="Location">
       <Link href="/buckets" className={styles.crumb}>
@@ -311,7 +316,7 @@ function BucketBrowser() {
         bucketName={bucket.bucketName}
         actions={
           canUploadHere ? (
-            <Button variant="primary" onClick={() => fileInputRef.current?.click()}>
+            <Button variant="primary" onClick={() => setUploadOpen(true)}>
               Upload files
             </Button>
           ) : null
@@ -331,84 +336,17 @@ function BucketBrowser() {
         </div>
       )}
 
-      {/* Upload surface */}
-      {canUploadHere && (
-        <>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            hidden
-            accept={UPLOAD_ACCEPT_ATTRIBUTE}
-            onChange={(event) => {
-              void handleFiles(event.target.files);
-              event.target.value = "";
-            }}
-          />
-          <div
-            className={`${styles.dropZone} ${dragging ? styles.dropZoneActive : ""}`}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={(event) => {
-              event.preventDefault();
-              setDragging(false);
-              void handleFiles(event.dataTransfer.files);
-            }}
-          >
-            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-              Choose files
-            </Button>
-            <p className={styles.dropHint}>
-              or drop them here. Files are uploaded into{" "}
-              <span className="data">
-                {segments.length === 0 ? bucket.label : segments.join("/")}
-              </span>
-              , the folder you are viewing. {ALLOWED_UPLOAD_LABEL} files only.{" "}
-              {UPLOAD_NOTICE} A file whose name already exists is stored
-              alongside the original, never over it.
-            </p>
-          </div>
-        </>
-      )}
-
-      {uploads.length > 0 && (
-        <div className={styles.uploadList}>
-          {uploads.map((upload) => (
-            <div key={upload.id} className={styles.uploadRow}>
-              <span className={styles.uploadName}>{upload.name}</span>
-              {upload.status === "uploading" && (
-                <div
-                  className={styles.progressTrack}
-                  role="progressbar"
-                  aria-valuenow={Math.round(upload.progress * 100)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={`Uploading ${upload.name}`}
-                >
-                  <div
-                    className={styles.progressBar}
-                    style={{ width: `${upload.progress * 100}%` }}
-                  />
-                </div>
-              )}
-              {upload.status === "done" && <Badge tone="success">Uploaded</Badge>}
-              {upload.status === "failed" && <Badge tone="error">Failed</Badge>}
-              {upload.message && (
-                <span className="muted" style={{ fontSize: "0.8125rem" }}>
-                  {upload.message}
-                </span>
-              )}
-            </div>
-          ))}
-          <div>
-            <Button small variant="ghost" onClick={() => setUploads([])}>
-              Clear completed
-            </Button>
-          </div>
-        </div>
+      {canUploadHere && uploadOpen && (
+        <UploadDialog
+          folderLabel={folderLabel}
+          uploads={uploads}
+          busy={uploads.some((upload) => upload.status === "uploading")}
+          onFiles={handleFiles}
+          onClose={() => {
+            setUploadOpen(false);
+            setUploads([]);
+          }}
+        />
       )}
 
       {truncated && (
@@ -551,6 +489,136 @@ function BucketBrowser() {
         )}
       </Card>
     </>
+  );
+}
+
+/**
+ * Upload surface, in a modal rather than on the page.
+ *
+ * It used to sit permanently above the table, which gave a large drop target to
+ * every folder view whether or not anyone intended to upload. As a dialog it
+ * appears only when asked for, and it can state the destination explicitly —
+ * which matters more here than in most upload flows, because the portal cannot
+ * delete or replace a file once it has landed.
+ */
+function UploadDialog({
+  folderLabel,
+  uploads,
+  busy,
+  onFiles,
+  onClose,
+}: {
+  folderLabel: string;
+  uploads: readonly ActiveUpload[];
+  busy: boolean;
+  onFiles: (files: FileList | null) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [element, setElement] = useState<HTMLDialogElement | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (element && !element.open) element.showModal();
+  }, [element]);
+
+  return (
+    <dialog
+      ref={setElement}
+      className="dialogSurface"
+      onCancel={(event) => {
+        event.preventDefault();
+        // Escape during a transfer would hide progress on something that is
+        // still being written.
+        if (!busy) onClose();
+      }}
+    >
+      <header className="dialogHeader">
+        <h2>Upload files</h2>
+      </header>
+
+      <div className="dialogBody">
+        <p className={styles.uploadTarget}>
+          Uploading to <span className="data">{folderLabel}</span>
+        </p>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          accept={UPLOAD_ACCEPT_ATTRIBUTE}
+          onChange={(event) => {
+            void onFiles(event.target.files);
+            event.target.value = "";
+          }}
+        />
+
+        <div
+          className={`${styles.dropZone} ${dragging ? styles.dropZoneActive : ""}`}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            void onFiles(event.dataTransfer.files);
+          }}
+        >
+          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+            Choose files
+          </Button>
+          <p className={styles.dropHint}>
+            or drop them here. {ALLOWED_UPLOAD_LABEL} files only.
+          </p>
+        </div>
+
+        <p className={styles.uploadNotice}>
+          {UPLOAD_NOTICE} A file whose name already exists is stored alongside
+          the original, never over it.
+        </p>
+
+        {uploads.length > 0 && (
+          <div className={styles.uploadList}>
+            {uploads.map((upload) => (
+              <div key={upload.id} className={styles.uploadRow}>
+                <span className={styles.uploadName}>{upload.name}</span>
+                {upload.status === "uploading" && (
+                  <div
+                    className={styles.progressTrack}
+                    role="progressbar"
+                    aria-valuenow={Math.round(upload.progress * 100)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`Uploading ${upload.name}`}
+                  >
+                    <div
+                      className={styles.progressBar}
+                      style={{ width: `${upload.progress * 100}%` }}
+                    />
+                  </div>
+                )}
+                {upload.status === "done" && <Badge tone="success">Uploaded</Badge>}
+                {upload.status === "failed" && <Badge tone="error">Failed</Badge>}
+                {upload.message && (
+                  <span className="muted" style={{ fontSize: "0.8125rem" }}>
+                    {upload.message}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <footer className="dialogFooter">
+        <Button variant="primary" onClick={onClose} disabled={busy}>
+          {busy ? "Uploading…" : "Done"}
+        </Button>
+      </footer>
+    </dialog>
   );
 }
 
