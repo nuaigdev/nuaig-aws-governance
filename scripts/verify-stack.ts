@@ -225,6 +225,52 @@ function main() {
 
   notes.push(`checked ${allowsChecked} Allow statement(s) naming a client bucket`);
 
+  /* ------------------- 5. the invitation template survived synth -------- */
+
+  /**
+   * `adminCreateUserConfig` carries both `AllowAdminCreateUserOnly` and the
+   * invitation message. `backend.ts` sets the first, and once overwrote the
+   * whole object — dropping the custom message so Cognito sent its default
+   * "your username is X and temporary password is Y" instead. The deploy
+   * succeeded; only the next invitation revealed it.
+   *
+   * Checked here because that is the kind of loss nothing else catches: the
+   * template is not referenced by any test that runs against the real stack.
+   */
+  const userPools = templates.flatMap(({ template }) =>
+    Object.values(template.Resources ?? {}).filter(
+      (resource) => resource.Type === "AWS::Cognito::UserPool",
+    ),
+  );
+
+  if (userPools.length === 0) {
+    fail("No Cognito user pool was synthesized; the invitation email cannot be verified.");
+  }
+
+  for (const pool of userPools) {
+    const config = (pool.Properties ?? {}).AdminCreateUserConfig as
+      | { AllowAdminCreateUserOnly?: boolean; InviteMessageTemplate?: { EmailMessage?: string } }
+      | undefined;
+
+    if (config?.AllowAdminCreateUserOnly !== true) {
+      fail("The user pool does not restrict sign-up to administrators.");
+    }
+
+    const message = config?.InviteMessageTemplate?.EmailMessage;
+    if (!message) {
+      fail(
+        "The user pool has no invitation message template, so Cognito would send its " +
+          "default one-line message. Check that adminCreateUserConfig is merged, not replaced.",
+      );
+    } else if (!message.includes("{username}") || !message.includes("{####}")) {
+      fail("The invitation template is missing {username} or {####}; Cognito rejects that.");
+    } else {
+      notes.push(
+        `invitation template present (${message.length} chars) with both placeholders`,
+      );
+    }
+  }
+
   /* ------------------------------------------------------------ report -- */
 
   for (const note of notes) console.log(`  · ${note}`);
@@ -241,7 +287,8 @@ function main() {
   console.log("  ✓ no client bucket is a CloudFormation-managed resource");
   console.log("  ✓ no bucket policy targets a client bucket");
   console.log("  ✓ no Allow grants a destructive or wildcard S3 action on a client bucket");
-  console.log("  ✓ destructive actions appear only under Deny\n");
+  console.log("  ✓ destructive actions appear only under Deny");
+  console.log("  ✓ the custom invitation email survived into the user pool\n");
 }
 
 main();

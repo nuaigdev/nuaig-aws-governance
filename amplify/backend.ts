@@ -7,6 +7,7 @@ import {
   PolicyStatement,
   type CfnRole,
 } from "aws-cdk-lib/aws-iam";
+import type { CfnUserPool } from "aws-cdk-lib/aws-cognito";
 import {
   BlockPublicAccess,
   Bucket,
@@ -256,8 +257,22 @@ cfnUserPoolClient.tokenValidityUnits = {
   refreshToken: "hours",
 };
 
-// Admins create every user. Nobody self-registers into a client's data portal.
+/**
+ * Admins create every user. Nobody self-registers into a client's data portal.
+ *
+ * **Merged, not replaced.** `adminCreateUserConfig` also carries the invitation
+ * message template that `userInvitation` in `defineAuth` sets. Assigning a
+ * fresh object here silently dropped it, and Cognito fell back to its default
+ * one-line "your username is X and temporary password is Y" — which is the
+ * message the custom template exists to replace. The same replace-versus-merge
+ * trap as `PutBucketPolicy`, and just as quiet: the deploy succeeds and only
+ * the next invitation shows the loss.
+ */
 cfnUserPool.adminCreateUserConfig = {
+  ...(typeof cfnUserPool.adminCreateUserConfig === "object" &&
+  cfnUserPool.adminCreateUserConfig !== null
+    ? (cfnUserPool.adminCreateUserConfig as CfnUserPool.AdminCreateUserConfigProperty)
+    : {}),
   allowAdminCreateUserOnly: true,
 };
 
