@@ -24,6 +24,12 @@ import type { AppSyncResolverEvent } from "aws-lambda";
 import { env } from "$amplify/env/admin-users";
 
 import { activeClient } from "../../../config/index";
+import {
+  canGrantGroup,
+  canManageUser,
+  canManageUsers,
+  isAdmin,
+} from "../../../config/access";
 import type { Schema } from "../../data/resource";
 import { withEmail } from "../shared/actor-email";
 import { writeAuditEvent } from "../shared/audit";
@@ -52,10 +58,11 @@ export const handler = async (
 ): Promise<unknown> => {
   const caller = await withEmail(resolveCaller(event), USER_POOL_ID);
 
-  // AppSync already enforces the admin group on this mutation. Re-checking
-  // here means the handler is still safe if that binding is ever loosened, and
-  // it gives us an audit record of the attempt rather than a silent 401.
-  if (!caller.groups.includes(ADMIN_GROUP)) {
+  // AppSync already enforces the administrative groups on this mutation.
+  // Re-checking here means the handler is still safe if that binding is ever
+  // loosened, and it gives us an audit record of the attempt rather than a
+  // silent 401.
+  if (!canManageUsers(activeClient, caller.groups)) {
     await writeAuditEvent(data, activeClient.clientId, caller, {
       action: "ACCESS_DENIED",
       outcome: "DENIED",
@@ -67,6 +74,11 @@ export const handler = async (
   const request = parseOperation(event.arguments.operation, event.arguments.payload);
 
   try {
+    // Every operation that names a user or a group is bounded here, in one
+    // place, before it runs. Doing it per-operation invites the next operation
+    // to be added without its guard.
+    await assertCallerMayPerform(request, caller);
+
     switch (request.operation) {
       case "listUsers":
         return await listUsers();
@@ -428,6 +440,59 @@ async function listAllCognitoUsers(): Promise<UserType[]> {
   } while (paginationToken);
 
   return users;
+}
+
+/**
+ * The tier boundary, enforced for every operation that names a user or group.
+ *
+ * A full administrator passes straight through. A user administrator is bound
+ * two ways, and both matter:
+ *
+ *  1. **They cannot act on a full administrator.** Without this they could
+ *     disable, reset or re-group the administrator above them — which would
+ *     make the tier a formality.
+ *  2. **They cannot grant the administrator group.** Without this they could
+ *     create a colleague with group-management rights, or add themselves, and
+ *     reach the group → bucket mapping the tier exists to withhold.
+ *
+ * The target's groups are read from Cognito rather than taken from the
+ * request, so the decision is made against what is actually true.
+ */
+async function assertCallerMayPerform(
+  request: ReturnType<typeof parseOperation>,
+  caller: ReturnType<typeof resolveCaller>,
+): Promise<void> {
+  if (isAdmin(activeClient, caller.groups)) return;
+
+  const requestedGroups =
+    request.operation === "createUser"
+      ? request.groups
+      : request.operation === "setUserGroups"
+        ? request.groups
+        : [];
+
+  for (const groupId of requestedGroups) {
+    if (!canGrantGroup(activeClient, caller.groups, groupId)) {
+      throw new OperationError(
+        `You cannot grant the "${groupId}" group. Administrator access is ` +
+          `granted by Nuaig.`,
+      );
+    }
+  }
+
+  // `createUser` has no existing target to inspect; the group check above is
+  // the whole guard for it.
+  const targetUsername =
+    "username" in request ? (request.username as string | undefined) : undefined;
+  if (!targetUsername) return;
+
+  const targetGroups = await listGroupsForUser(targetUsername);
+  if (!canManageUser(activeClient, caller.groups, targetGroups)) {
+    throw new OperationError(
+      `This user is an administrator and can only be managed by another ` +
+        `administrator.`,
+    );
+  }
 }
 
 async function listGroupsForUser(username: string): Promise<string[]> {

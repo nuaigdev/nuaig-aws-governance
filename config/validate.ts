@@ -95,10 +95,17 @@ export function validateClientConfig(config: ClientConfig): ClientConfig {
       }
     }
 
-    if (group.bucketAccess.length === 0 && !group.isAdmin) {
+    if (group.bucketAccess.length === 0 && !group.isAdmin && !group.isUserAdmin) {
       problems.push(
-        `group "${group.id}" grants no bucket access and is not an admin group; ` +
-          `it would give its members nothing`,
+        `group "${group.id}" grants no bucket access and carries no ` +
+          `administrative capability; it would give its members nothing`,
+      );
+    }
+
+    if (group.isAdmin && group.isUserAdmin) {
+      problems.push(
+        `group "${group.id}" sets both isAdmin and isUserAdmin; the second tier ` +
+          `exists to withhold group management, so a group cannot be both`,
       );
     }
   }

@@ -14,6 +14,20 @@ import { postAuthenticationFunction } from "../functions/post-authentication/res
 const ADMIN_GROUP = activeClient.groups.find((group) => group.isAdmin)!.id;
 
 /**
+ * Groups permitted to manage users and read the audit log.
+ *
+ * Both administrative tiers, where `ADMIN_GROUP` alone guards `manageGroups`
+ * below. That difference is the whole point of the second tier, and it is
+ * enforced here at the API rather than only by hiding a nav item: a user
+ * administrator who crafts the mutation by hand is refused by AppSync before
+ * any handler runs.
+ */
+const USER_ADMIN_GROUPS = [
+  ADMIN_GROUP,
+  ...activeClient.groups.filter((group) => group.isUserAdmin).map((g) => g.id),
+];
+
+/**
  * Portal metadata and the audit log.
  *
  * ## Why no client writes to the audit log
@@ -103,10 +117,10 @@ const schema = a
         index("bucketId").sortKeys(["occurredAt"]).queryField("auditEventsByBucket"),
       ])
       .authorization((allow) => [
-        // Read-only, admins only. No create/update/delete for any caller.
-        // Backend function access is granted at the schema level below — this
-        // version of data-schema does not accept `allow.resource` per model.
-        allow.groups([ADMIN_GROUP]).to(["read"]),
+        // Read-only, administrative tiers only. No create/update/delete for any
+        // caller. Backend function access is granted at the schema level below —
+        // this version of data-schema does not accept `allow.resource` per model.
+        allow.groups(USER_ADMIN_GROUPS).to(["read"]),
       ]),
 
     /**
@@ -128,7 +142,7 @@ const schema = a
       })
       .identifier(["sub"])
       .authorization((allow) => [
-        allow.groups([ADMIN_GROUP]).to(["read"]),
+        allow.groups(USER_ADMIN_GROUPS).to(["read"]),
       ]),
 
     /**
@@ -151,7 +165,14 @@ const schema = a
       .authorization((allow) => [allow.authenticated()])
       .handler(a.handler.function(auditWriterFunction)),
 
-    /** Admin-only user management. All operations are audited by the handler. */
+    /**
+     * User management, for both administrative tiers. All operations are
+     * audited by the handler.
+     *
+     * A user administrator reaching this mutation is still bounded inside the
+     * handler: they cannot act on a full administrator, and cannot grant the
+     * admin group to anyone. See `canManageUser` and `canGrantGroup`.
+     */
     manageUsers: a
       .mutation()
       .arguments({
@@ -159,7 +180,7 @@ const schema = a
         payload: a.json().required(),
       })
       .returns(a.json())
-      .authorization((allow) => [allow.groups([ADMIN_GROUP])])
+      .authorization((allow) => [allow.groups(USER_ADMIN_GROUPS)])
       .handler(a.handler.function(adminUsersFunction)),
 
     /**
@@ -182,7 +203,14 @@ const schema = a
       .authorization((allow) => [allow.authenticated()])
       .handler(a.handler.function(adminGroupsFunction)),
 
-    /** Admin-only group inspection and membership changes. */
+    /**
+     * Group inspection and bucket-mapping changes. **Full administrators only
+     * — `ADMIN_GROUP`, deliberately not `USER_ADMIN_GROUPS`.**
+     *
+     * This single line is what keeps the group → bucket mapping with Nuaig. A
+     * user administrator is refused here by AppSync, so hiding the Groups tab
+     * is a courtesy rather than the control.
+     */
     manageGroups: a
       .mutation()
       .arguments({

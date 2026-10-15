@@ -20,6 +20,9 @@ interface SessionContextValue {
   readonly session: PortalSession | null;
   readonly status: "loading" | "authenticated" | "unauthenticated";
   readonly isAdmin: boolean;
+  readonly canManageUsers: boolean;
+  readonly canManageGroups: boolean;
+  readonly canViewAudit: boolean;
   /** Re-reads the session. Pass `true` after anything that could change groups. */
   readonly refresh: (forceTokenRefresh?: boolean) => Promise<void>;
   /** `"idle"` sends the user to sign-in with an explanation. */
@@ -79,6 +82,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       session,
       status,
       isAdmin: session?.isAdmin ?? false,
+      canManageUsers: session?.canManageUsers ?? false,
+      canManageGroups: session?.canManageGroups ?? false,
+      canViewAudit: session?.canViewAudit ?? false,
       refresh,
       signOut,
     }),

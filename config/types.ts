@@ -64,12 +64,33 @@ export interface GroupDefinition {
   readonly label: string;
   readonly description: string;
   /**
-   * Grants administrative capability: user management, group management and
+   * Full administrative capability: user management, group management and
    * the audit log. Separate from bucket access — an admin's *data* reach is
    * still expressed as an ordinary grant, so it is visible and auditable in
    * the same place as everyone else's.
+   *
+   * **Exactly one group per client carries this**, enforced by
+   * `validateClientConfig`. Several places resolve "the admin group" with
+   * `groups.find(g => g.isAdmin)`, which would silently pick the first of two.
    */
   readonly isAdmin?: boolean;
+  /**
+   * User administration without group administration: manage users and read
+   * the audit log, but never see or change which buckets a group reaches.
+   *
+   * Exists because the two responsibilities sit with different organisations.
+   * Nuaig owns the group → bucket mapping, since that is the access model
+   * itself; the client owns their own staff list. A client administrator can
+   * therefore add someone and put them in the right groups, without being able
+   * to change what those groups mean.
+   *
+   * The ceiling is enforced in three places, not one: `manageGroups` is bound
+   * to the admin group in AppSync so the API refuses them outright, the
+   * `admin-users` handler refuses to let them touch a full administrator or
+   * grant the admin group, and the UI hides what they cannot reach. Never
+   * combine with `isAdmin` — `validateClientConfig` rejects that.
+   */
+  readonly isUserAdmin?: boolean;
   readonly bucketAccess: readonly BucketGrant[];
 }
 

@@ -3,10 +3,16 @@ import { describe, it } from "node:test";
 
 import {
   accessibleBuckets,
+  canGrantGroup,
+  canManageGroups,
+  canManageUser,
+  canManageUsers,
   canRead,
   canUpload,
+  canViewAudit,
   grantedBuckets,
   isAdmin,
+  isUserAdmin,
 } from "./access";
 import type { ClientConfig } from "./types";
 import { ClientConfigError, validateClientConfig } from "./validate";
@@ -296,5 +302,142 @@ describe("validateClientConfig", () => {
         return true;
       },
     );
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Administrative tiers                                                        */
+/* -------------------------------------------------------------------------- */
+
+/** The test config plus a user-administrator tier. */
+const tiered: ClientConfig = {
+  ...config,
+  groups: [
+    ...config.groups,
+    {
+      id: "user-admin",
+      label: "User Administrator",
+      description: "d",
+      isUserAdmin: true,
+      bucketAccess: [],
+    },
+  ],
+};
+
+describe("administrative tiers", () => {
+  it("separates the two tiers", () => {
+    assert.equal(isAdmin(tiered, ["admin"]), true);
+    assert.equal(isUserAdmin(tiered, ["admin"]), false);
+
+    assert.equal(isAdmin(tiered, ["user-admin"]), false);
+    assert.equal(isUserAdmin(tiered, ["user-admin"]), true);
+  });
+
+  it("treats a full admin who also holds the lesser tier as a full admin", () => {
+    assert.equal(isAdmin(tiered, ["admin", "user-admin"]), true);
+    assert.equal(isUserAdmin(tiered, ["admin", "user-admin"]), false);
+    assert.equal(canManageGroups(tiered, ["admin", "user-admin"]), true);
+  });
+
+  it("lets both tiers manage users and read the audit log", () => {
+    for (const groups of [["admin"], ["user-admin"]]) {
+      assert.equal(canManageUsers(tiered, groups), true);
+      assert.equal(canViewAudit(tiered, groups), true);
+    }
+  });
+
+  it("lets only the full tier manage groups", () => {
+    assert.equal(canManageGroups(tiered, ["admin"]), true);
+    assert.equal(canManageGroups(tiered, ["user-admin"]), false);
+  });
+
+  it("grants an ordinary user no administrative capability at all", () => {
+    for (const check of [canManageUsers, canManageGroups, canViewAudit]) {
+      assert.equal(check(tiered, ["docs-team"]), false);
+      assert.equal(check(tiered, []), false);
+    }
+  });
+});
+
+describe("canGrantGroup", () => {
+  it("lets a full administrator grant any group, including their own", () => {
+    for (const group of tiered.groups) {
+      assert.equal(canGrantGroup(tiered, ["admin"], group.id), true, group.id);
+    }
+  });
+
+  it("never lets a user administrator grant the administrator group", () => {
+    assert.equal(canGrantGroup(tiered, ["user-admin"], "admin"), false);
+  });
+
+  it("lets a user administrator grant ordinary groups and their own tier", () => {
+    assert.equal(canGrantGroup(tiered, ["user-admin"], "docs-team"), true);
+    assert.equal(canGrantGroup(tiered, ["user-admin"], "pii-reader"), true);
+    assert.equal(canGrantGroup(tiered, ["user-admin"], "user-admin"), true);
+  });
+
+  it("refuses an unknown group rather than defaulting to permitted", () => {
+    assert.equal(canGrantGroup(tiered, ["user-admin"], "no-such-group"), false);
+  });
+
+  it("grants nothing to someone with no administrative capability", () => {
+    assert.equal(canGrantGroup(tiered, ["docs-team"], "docs-reader"), false);
+    assert.equal(canGrantGroup(tiered, [], "docs-reader"), false);
+  });
+});
+
+describe("canManageUser", () => {
+  it("lets a full administrator manage anyone, including another admin", () => {
+    assert.equal(canManageUser(tiered, ["admin"], ["admin"]), true);
+    assert.equal(canManageUser(tiered, ["admin"], ["docs-team"]), true);
+  });
+
+  it("stops a user administrator from acting on a full administrator", () => {
+    assert.equal(canManageUser(tiered, ["user-admin"], ["admin"]), false);
+    assert.equal(
+      canManageUser(tiered, ["user-admin"], ["admin", "docs-team"]),
+      false,
+      "an admin who also holds an ordinary group is still an admin",
+    );
+  });
+
+  it("lets a user administrator manage ordinary users and their peers", () => {
+    assert.equal(canManageUser(tiered, ["user-admin"], ["docs-team"]), true);
+    assert.equal(canManageUser(tiered, ["user-admin"], ["user-admin"]), true);
+    assert.equal(canManageUser(tiered, ["user-admin"], []), true);
+  });
+
+  it("refuses anyone with no administrative capability", () => {
+    assert.equal(canManageUser(tiered, ["docs-team"], ["docs-reader"]), false);
+  });
+});
+
+describe("validateClientConfig: administrative tiers", () => {
+  it("accepts a user-admin group with no bucket access", () => {
+    assert.equal(validateClientConfig(tiered), tiered);
+  });
+
+  it("rejects a group that is both tiers at once", () => {
+    const broken = {
+      ...config,
+      groups: config.groups.map((g) =>
+        g.isAdmin ? { ...g, isUserAdmin: true } : g,
+      ),
+    };
+    assert.throws(
+      () => validateClientConfig(broken),
+      /sets both isAdmin and isUserAdmin/,
+    );
+  });
+
+  it("still rejects an ordinary group that grants nothing", () => {
+    const broken = {
+      ...config,
+      groups: [
+        ...config.groups,
+        { id: "empty", label: "Empty", description: "d", bucketAccess: [] },
+      ],
+    };
+    assert.throws(() => validateClientConfig(broken), /carries no administrative capability/);
   });
 });

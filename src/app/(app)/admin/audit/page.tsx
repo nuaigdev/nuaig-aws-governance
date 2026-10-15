@@ -72,7 +72,10 @@ const ACTION_GROUPS: Record<string, readonly string[]> = {
     "FILE_DOWNLOAD",
     "FILE_UPLOAD",
     "FILE_UPLOAD_REJECTED_COLLISION",
+    "FILE_UPLOAD_REJECTED_TYPE",
   ],
+  // `GROUP_ACCESS_VIEWED` is absent: opening the Groups screen is no longer
+  // recorded. The enum value remains so historical rows still render.
   Administration: [
     "USER_CREATED",
     "USER_DISABLED",
@@ -81,7 +84,6 @@ const ACTION_GROUPS: Record<string, readonly string[]> = {
     "USER_INVITE_RESENT",
     "USER_PASSWORD_RESET",
     "USER_PROFILE_UPDATED",
-    "GROUP_ACCESS_VIEWED",
     "GROUP_ACCESS_CHANGED",
   ],
   Refused: ["ACCESS_DENIED"],

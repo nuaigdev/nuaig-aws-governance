@@ -19,17 +19,15 @@ import { UserMenu } from "./UserMenu";
  */
 export function AppHeader() {
   const pathname = usePathname();
-  const { isAdmin } = useSession();
+  const { canManageUsers, canManageGroups, canViewAudit } = useSession();
 
+  // Built per capability rather than per tier, so Groups disappears for a user
+  // administrator while Users and the audit log stay.
   const links = [
     { href: "/buckets", label: "Buckets" },
-    ...(isAdmin
-      ? [
-          { href: "/admin/users", label: "Users" },
-          { href: "/admin/groups", label: "Groups" },
-          { href: "/admin/audit", label: "Audit log" },
-        ]
-      : []),
+    ...(canManageUsers ? [{ href: "/admin/users", label: "Users" }] : []),
+    ...(canManageGroups ? [{ href: "/admin/groups", label: "Groups" }] : []),
+    ...(canViewAudit ? [{ href: "/admin/audit", label: "Audit log" }] : []),
   ];
 
   return (

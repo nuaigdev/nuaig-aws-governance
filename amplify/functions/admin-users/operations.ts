@@ -237,6 +237,7 @@ export function assertAdminSafety(
   currentEnabledAdminUsernames: readonly string[],
 ): void {
   const targetIsAdmin = currentEnabledAdminUsernames.includes(change.targetUsername);
+  const callerIsAdmin = currentEnabledAdminUsernames.includes(callerUsername);
 
   if (change.targetUsername === callerUsername) {
     if (change.kind === "disable") {
@@ -244,7 +245,14 @@ export function assertAdminSafety(
         `You cannot disable your own account. Ask another administrator to do it.`,
       );
     }
-    if (change.kind === "setGroups" && !change.nextGroups?.includes(ADMIN_GROUP)) {
+    // Only meaningful for a caller who *has* administrator access. A user
+    // administrator editing their own groups never holds `ADMIN_GROUP`, and
+    // would otherwise be told they were removing access they never had.
+    if (
+      callerIsAdmin &&
+      change.kind === "setGroups" &&
+      !change.nextGroups?.includes(ADMIN_GROUP)
+    ) {
       throw new OperationError(
         `You cannot remove your own administrator access. Ask another ` +
           `administrator to do it.`,

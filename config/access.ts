@@ -63,12 +63,109 @@ function resolveGroups(
     .filter((g): g is GroupDefinition => g !== undefined);
 }
 
-/** True when any of the user's groups carries administrative capability. */
+/** True when any of the user's groups carries full administrative capability. */
 export function isAdmin(
   config: ClientConfig,
   groupIds: readonly string[],
 ): boolean {
   return resolveGroups(config, groupIds).some((g) => g.isAdmin === true);
+}
+
+/**
+ * True when the user administers users but not groups.
+ *
+ * Deliberately false for a full administrator: this answers "which tier is
+ * this", and the questions that matter — may they do X — are the `can*`
+ * predicates below. Asking `isUserAdmin` where you meant `canManageUsers` is
+ * the mistake this separation is here to make obvious.
+ */
+export function isUserAdmin(
+  config: ClientConfig,
+  groupIds: readonly string[],
+): boolean {
+  return (
+    !isAdmin(config, groupIds) &&
+    resolveGroups(config, groupIds).some((g) => g.isUserAdmin === true)
+  );
+}
+
+/** May create, edit, disable and re-invite users, subject to `canManageUser`. */
+export function canManageUsers(
+  config: ClientConfig,
+  groupIds: readonly string[],
+): boolean {
+  return resolveGroups(config, groupIds).some(
+    (g) => g.isAdmin === true || g.isUserAdmin === true,
+  );
+}
+
+/**
+ * May see and change which buckets a group reaches.
+ *
+ * Full administrators only. This is the line between the two tiers, and it is
+ * the reason the second tier exists at all.
+ */
+export function canManageGroups(
+  config: ClientConfig,
+  groupIds: readonly string[],
+): boolean {
+  return isAdmin(config, groupIds);
+}
+
+/** May read the audit log. Both administrative tiers. */
+export function canViewAudit(
+  config: ClientConfig,
+  groupIds: readonly string[],
+): boolean {
+  return canManageUsers(config, groupIds);
+}
+
+/**
+ * Whether the caller may grant a given group to somebody.
+ *
+ * The escalation guard. A user administrator may hand out any group *except*
+ * the full administrator one — otherwise they could mint a colleague with
+ * group-management rights, or add themselves, and the tier boundary would mean
+ * nothing. They may grant their own tier, so a client is not stranded when
+ * their administrator leaves.
+ *
+ * Used by both the Users screen and the `admin-users` handler. The handler is
+ * the enforcement; the screen uses it so it never offers something that will
+ * be refused.
+ */
+export function canGrantGroup(
+  config: ClientConfig,
+  callerGroupIds: readonly string[],
+  targetGroupId: string,
+): boolean {
+  if (isAdmin(config, callerGroupIds)) return true;
+  if (!canManageUsers(config, callerGroupIds)) return false;
+
+  const target = config.groups.find((g) => g.id === targetGroupId);
+  // An unknown group is refused rather than allowed: it is rejected downstream
+  // anyway, and defaulting to "permitted" in a privilege check is the wrong
+  // direction to be wrong in.
+  if (!target) return false;
+
+  return target.isAdmin !== true;
+}
+
+/**
+ * Whether the caller may administer a particular user at all.
+ *
+ * A user administrator cannot act on a full administrator — not to disable
+ * them, reset their password, edit their profile or change their groups. That
+ * is what "manage everyone except the main administrator" means, and without
+ * it the tier could simply disable the administrator above it.
+ */
+export function canManageUser(
+  config: ClientConfig,
+  callerGroupIds: readonly string[],
+  targetGroupIds: readonly string[],
+): boolean {
+  if (isAdmin(config, callerGroupIds)) return true;
+  if (!canManageUsers(config, callerGroupIds)) return false;
+  return !isAdmin(config, targetGroupIds);
 }
 
 /**

@@ -1,7 +1,13 @@
 import { fetchAuthSession, getCurrentUser } from "aws-amplify/auth";
 
 import { activeClient } from "@config/index";
-import { accessibleBuckets, isAdmin as configIsAdmin } from "@config/access";
+import {
+  accessibleBuckets,
+  canManageGroups as configCanManageGroups,
+  canManageUsers as configCanManageUsers,
+  canViewAudit as configCanViewAudit,
+  isAdmin as configIsAdmin,
+} from "@config/access";
 import type { EffectiveBucketAccess } from "@config/access";
 import type { AccessMode } from "@config/types";
 import { getDataClient } from "@/lib/amplify/client";
@@ -25,7 +31,19 @@ export interface PortalSession {
   /** Optional job title from `custom:jobTitle`. Empty when never set. */
   readonly jobTitle: string;
   readonly groups: readonly string[];
+  /** Full administrator: users, groups and the audit log. */
   readonly isAdmin: boolean;
+  /**
+   * What this user may reach, rather than which tier they are.
+   *
+   * The nav and route guards read these instead of `isAdmin`, so adding a tier
+   * never means hunting for every `isAdmin` in the UI. None of them is the
+   * security boundary — AppSync and the handlers are — but they decide what is
+   * offered, and offering something that will be refused is its own bug.
+   */
+  readonly canManageUsers: boolean;
+  readonly canManageGroups: boolean;
+  readonly canViewAudit: boolean;
   readonly buckets: readonly EffectiveBucketAccess[];
 }
 
@@ -71,6 +89,9 @@ export async function loadSession(
     // Administrative capability is a property of the group's definition, not of
     // its IAM policy, so it stays config-resolved.
     isAdmin: configIsAdmin(activeClient, groups),
+    canManageUsers: configCanManageUsers(activeClient, groups),
+    canManageGroups: configCanManageGroups(activeClient, groups),
+    canViewAudit: configCanViewAudit(activeClient, groups),
     buckets: await liveBuckets(groups),
   };
 }

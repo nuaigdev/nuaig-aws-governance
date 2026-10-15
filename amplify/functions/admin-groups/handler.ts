@@ -75,7 +75,7 @@ export const handler = async (
 
     switch (request.operation) {
       case "listGroups":
-        return await listGroups(caller);
+        return await listGroups();
       case "setGroupAccess":
         return await setGroupAccess(request.groupId, request.access, caller);
     }
@@ -100,9 +100,7 @@ export const handler = async (
 
 /* -------------------------------------------------------------------------- */
 
-async function listGroups(
-  caller: ReturnType<typeof resolveCaller>,
-): Promise<GroupAccessView[]> {
+async function listGroups(): Promise<GroupAccessView[]> {
   const views = await Promise.all(
     activeClient.groups.map(async (group) => {
       const [memberCount, liveAccess] = await Promise.all([
@@ -137,11 +135,10 @@ async function listGroups(
     }),
   );
 
-  await writeAuditEvent(data, activeClient.clientId, caller, {
-    action: "GROUP_ACCESS_VIEWED",
-    outcome: "SUCCESS",
-  });
-
+  // Deliberately not audited. Opening the Groups screen is navigation, not a
+  // change, and recording it buried the events that matter — sign-ins, user
+  // changes and file access — under one entry per page view.
+  // `GROUP_ACCESS_CHANGED` still records every actual change.
   return views;
 }
 

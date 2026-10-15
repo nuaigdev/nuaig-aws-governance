@@ -3,7 +3,12 @@
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { activeClient } from "@config/index";
-import { describeMode, grantedBuckets } from "@config/access";
+import {
+  canGrantGroup,
+  canManageUser,
+  describeMode,
+  grantedBuckets,
+} from "@config/access";
 import {
   Badge,
   Button,
@@ -213,6 +218,14 @@ export default function UsersPage() {
               <tbody>
                 {visible.map((user) => {
                   const isSelf = user.sub === session?.sub;
+                  // A user administrator cannot act on a full administrator.
+                  // The handler refuses it either way; this stops the row from
+                  // offering buttons that would only produce an error.
+                  const manageable = canManageUser(
+                    activeClient,
+                    session?.groups ?? [],
+                    user.groups,
+                  );
                   return (
                     <tr key={user.username}>
                       <td>
@@ -257,6 +270,13 @@ export default function UsersPage() {
                         </span>
                       </td>
                       <td>
+                        {!manageable ? (
+                          <div className={styles.rowActions}>
+                            <span className="muted" style={{ fontSize: "0.8125rem" }}>
+                              Managed by Nuaig
+                            </span>
+                          </div>
+                        ) : (
                         <div className={styles.rowActions}>
                           <Button
                             small
@@ -329,6 +349,7 @@ export default function UsersPage() {
                             </Button>
                           )}
                         </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -768,13 +789,22 @@ function GroupPicker({
   disabled?: boolean;
   hint?: string;
 }) {
+  const { session } = useSession();
+
+  // Only groups this caller may actually grant. A user administrator never
+  // sees the administrator group here, so they cannot hand out the one tier
+  // that would let someone change the group → bucket mapping.
+  const grantable = activeClient.groups.filter((group) =>
+    canGrantGroup(activeClient, session?.groups ?? [], group.id),
+  );
+
   return (
     <div>
       <p className={styles.checkboxHint} style={{ marginBottom: "var(--space-2)" }}>
         {hint ?? "A user may belong to several groups; access is the union of them."}
       </p>
       <div className={styles.checkboxList}>
-        {activeClient.groups.map((group) => (
+        {grantable.map((group) => (
           <label key={group.id} className={styles.checkboxRow}>
             <input
               type="checkbox"
