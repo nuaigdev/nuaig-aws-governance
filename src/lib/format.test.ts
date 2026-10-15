@@ -5,6 +5,8 @@ import {
   fileExtension,
   formatBytes,
   formatDateTime,
+  formatDateTimeWithZone,
+  timeZoneLabel,
   formatRelative,
   keyBasename,
   keyPrefix,
@@ -53,6 +55,61 @@ describe("formatDateTime", () => {
     const result = formatDateTime("2026-03-04T09:30:00.000Z");
     assert.notEqual(result, "—");
     assert.match(result, /2026/);
+  });
+
+  /**
+   * The behaviour this replaced: no `timeZone`, so the browser's. The same
+   * record then read differently to each viewer with nothing saying which zone
+   * — which is what these assert against.
+   */
+  it("renders in the zone it is given, not the machine's", () => {
+    const iso = "2026-10-15T06:59:28.969Z";
+    assert.match(formatDateTime(iso, "America/New_York"), /02:59/);
+    assert.match(formatDateTime(iso, "Asia/Kolkata"), /12:29/);
+    assert.match(formatDateTime(iso, "UTC"), /06:59/);
+  });
+
+  it("crosses the date line correctly, not just the clock", () => {
+    // Late evening in New York is already the next day in Kolkata.
+    const iso = "2026-10-15T03:30:00.000Z";
+    assert.match(formatDateTime(iso, "America/New_York"), /14 Oct 2026|Oct 14/);
+    assert.match(formatDateTime(iso, "Asia/Kolkata"), /15 Oct 2026|Oct 15/);
+  });
+
+  it("tracks daylight saving rather than assuming a fixed offset", () => {
+    // Same wall-clock request either side of the US DST change.
+    const summer = formatDateTime("2026-07-01T16:00:00.000Z", "America/New_York");
+    const winter = formatDateTime("2026-01-01T16:00:00.000Z", "America/New_York");
+    assert.match(summer, /12:00/, "EDT is UTC-4");
+    assert.match(winter, /11:00/, "EST is UTC-5");
+  });
+});
+
+describe("formatDateTimeWithZone", () => {
+  it("names the zone, so a timestamp alone is unambiguous", () => {
+    const result = formatDateTimeWithZone("2026-10-15T06:59:28.969Z", "America/New_York");
+    assert.match(result, /02:59:28/, "includes seconds");
+    assert.match(result, /EDT|GMT-4/, "names the zone");
+  });
+
+  it("still degrades to an em dash", () => {
+    assert.equal(formatDateTimeWithZone(null), "—");
+    assert.equal(formatDateTimeWithZone("not-a-date"), "—");
+  });
+});
+
+describe("timeZoneLabel", () => {
+  it("gives a long name and its abbreviation", () => {
+    const label = timeZoneLabel("America/New_York", new Date("2026-07-01T12:00:00Z"));
+    assert.match(label, /Eastern/);
+    assert.match(label, /\(EDT\)/);
+  });
+
+  it("follows daylight saving, since a fixed label would be wrong half the year", () => {
+    const summer = timeZoneLabel("America/New_York", new Date("2026-07-01T12:00:00Z"));
+    const winter = timeZoneLabel("America/New_York", new Date("2026-01-01T12:00:00Z"));
+    assert.notEqual(summer, winter);
+    assert.match(winter, /\(EST\)/);
   });
 });
 

@@ -38,7 +38,7 @@ import {
   type PortalUser,
 } from "@/lib/admin";
 import { useSession } from "@/lib/auth/SessionProvider";
-import { formatDateTime, formatRelative, pluralise } from "@/lib/format";
+import { formatDateTimeWithZone, formatRelative, pluralise } from "@/lib/format";
 import { useAsyncData } from "@/lib/useAsyncData";
 
 import styles from "../Admin.module.css";
@@ -265,7 +265,7 @@ export default function UsersPage() {
                         <Badge tone={statusTone(user)}>{statusLabel(user)}</Badge>
                       </td>
                       <td className={uiStyles.numeric}>
-                        <span title={formatDateTime(user.lastLoginAt)}>
+                        <span title={formatDateTimeWithZone(user.lastLoginAt)}>
                           {formatRelative(user.lastLoginAt)}
                         </span>
                       </td>

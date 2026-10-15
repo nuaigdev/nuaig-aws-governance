@@ -1,8 +1,26 @@
+import { activeClient } from "@config/index";
+
 /**
  * Formatters for the data values rendered in the mono face.
  *
  * Centralised so a file size or a timestamp reads identically on every screen —
  * the sans/mono split only does its job if the mono side is consistent.
+ *
+ * ## Timestamps are rendered in the client's timezone, not the viewer's
+ *
+ * Every absolute time here is formatted in `activeClient.timeZone`. The zone is
+ * a parameter with that default so these stay testable, but nothing should pass
+ * it in normal use.
+ *
+ * This used to omit `timeZone` entirely, which meant the browser's. The same
+ * audit record then read as 02:59 in Pennsylvania and 12:29 in India with no
+ * label either way — fine until two people compare notes on one incident. The
+ * stored value is UTC regardless; this is purely how it is shown, and the zone
+ * is stated on screen wherever these appear.
+ *
+ * The locale is pinned to `en-US` for the same reason the zone is pinned: so
+ * every viewer reads the identical string. It also keeps the zone legible —
+ * `en-GB` renders `America/New_York` as "GMT-4" where `en-US` gives "EDT".
  */
 
 const KIB = 1024;
@@ -31,36 +49,96 @@ export function formatBytes(bytes: number | undefined | null): string {
 }
 
 /**
- * Absolute timestamp, in the viewer's locale and timezone.
+ * Absolute timestamp, in the client's timezone.
  *
  * Absolute rather than relative ("3 days ago") on purpose: this is an audit and
  * file-management tool, where the exact moment is the point. Relative time is
  * offered separately by `formatRelative` for secondary context.
+ *
+ * The zone is deliberately *not* appended here — these fill dense table
+ * columns, and repeating "EDT" on every row is noise. The screen states it
+ * once; `formatDateTimeWithZone` is for tooltips and anywhere a timestamp
+ * appears alone.
  */
-export function formatDateTime(iso: string | null | undefined): string {
+export function formatDateTime(
+  iso: string | null | undefined,
+  timeZone: string = activeClient.timeZone,
+): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+    timeZone,
   }).format(date);
 }
 
-/** Date only, for grouping and filters. */
-export function formatDate(iso: string | null | undefined): string {
+/**
+ * The same instant with its seconds and zone, for a tooltip or a detail line.
+ *
+ * Seconds are included because two audit events a few seconds apart otherwise
+ * render identically, which looks like a duplicated record.
+ */
+export function formatDateTimeWithZone(
+  iso: string | null | undefined,
+  timeZone: string = activeClient.timeZone,
+): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat(undefined, {
+
+  return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone,
+    timeZoneName: "short",
+  }).format(date);
+}
+
+/**
+ * How to name the display zone on screen, e.g. "Eastern Daylight Time (EDT)".
+ *
+ * Resolved against a date rather than stated in config because the answer
+ * changes twice a year — "EST" would be wrong for half of it.
+ */
+export function timeZoneLabel(
+  timeZone: string = activeClient.timeZone,
+  on: Date = new Date(),
+): string {
+  const name = (style: "long" | "short") =>
+    new Intl.DateTimeFormat("en-US", { timeZone, timeZoneName: style })
+      .formatToParts(on)
+      .find((part) => part.type === "timeZoneName")?.value ?? timeZone;
+
+  const long = name("long");
+  const short = name("short");
+  return long === short ? long : `${long} (${short})`;
+}
+
+/** Date only, for grouping and filters. */
+export function formatDate(
+  iso: string | null | undefined,
+  timeZone: string = activeClient.timeZone,
+): string {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    timeZone,
   }).format(date);
 }
 

@@ -121,6 +121,21 @@ export interface ClientConfig {
    */
   readonly portalUrl: string;
   /**
+   * IANA timezone every timestamp in the portal is displayed in, e.g.
+   * `"America/New_York"`.
+   *
+   * Fixed to the client rather than taken from the viewer's browser, which is
+   * what this used to do. An audit log needs one reading everyone shares: with
+   * browser-local time, a record written at 06:59 UTC reads as 02:59 to staff
+   * in Pennsylvania and 12:29 to someone in India, and nothing on screen says
+   * which — so two people comparing notes on an incident are quietly talking
+   * about different clocks.
+   *
+   * Events are still *stored* in UTC. This only decides how they are rendered,
+   * and the rendered zone is always labelled.
+   */
+  readonly timeZone: string;
+  /**
    * Path to the client's own logo under `public/`. Omit when the client has
    * not supplied one — the UI then renders `displayName` as styled text.
    * Never invent a client logo.

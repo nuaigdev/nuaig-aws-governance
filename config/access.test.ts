@@ -21,6 +21,7 @@ const config: ClientConfig = {
   clientId: "test-client",
   displayName: "Test Client",
   portalUrl: "https://portal.test.invalid",
+  timeZone: "America/New_York",
   bucketProvisioning: "managed",
   buckets: [
     { id: "docs", label: "Docs", bucketName: "test-docs", description: "d", sensitivity: "standard" },

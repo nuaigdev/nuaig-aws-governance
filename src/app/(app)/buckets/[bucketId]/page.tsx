@@ -22,7 +22,13 @@ import {
 import { useSession } from "@/lib/auth/SessionProvider";
 import { parsePrefix } from "@/lib/storage/keys";
 import { SENSITIVE_BUCKET_NOTICE, UPLOAD_NOTICE } from "@/lib/notices";
-import { fileExtension, formatBytes, formatDateTime, pluralise } from "@/lib/format";
+import {
+  fileExtension,
+  formatBytes,
+  formatDateTime,
+  formatDateTimeWithZone,
+  pluralise,
+} from "@/lib/format";
 import {
   AccessDeniedError,
   UploadRejectedError,
@@ -468,7 +474,12 @@ function BucketBrowser() {
                     <td className={uiStyles.numeric}>
                       {entry.isFolder ? "—" : formatBytes(entry.size)}
                     </td>
-                    <td className={uiStyles.numeric}>
+                    <td
+                      className={uiStyles.numeric}
+                      title={
+                        entry.isFolder ? undefined : formatDateTimeWithZone(entry.lastModified)
+                      }
+                    >
                       {entry.isFolder ? "—" : formatDateTime(entry.lastModified)}
                     </td>
                     <td>

@@ -14,6 +14,8 @@ export const clientConfig: ClientConfig = {
   // A real client's buckets already exist; the stack adopts them by name and
   // never creates or destroys them.
   portalUrl: "https://example.invalid",
+  // Template client.
+  timeZone: "America/New_York",
   bucketProvisioning: "existing",
   buckets: [
     {

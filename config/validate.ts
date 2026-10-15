@@ -71,6 +71,17 @@ export function validateClientConfig(config: ClientConfig): ClientConfig {
     );
   }
 
+  // `Intl` throws a RangeError for an unknown zone, which is the only reliable
+  // way to check an IANA name without shipping a copy of the database.
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: config.timeZone });
+  } catch {
+    problems.push(
+      `timeZone "${config.timeZone}" is not a recognised IANA timezone ` +
+        `(e.g. America/New_York)`,
+    );
+  }
+
   if (config.emailLogo) {
     const { path, width, height } = config.emailLogo;
     if (!path.startsWith("/")) {

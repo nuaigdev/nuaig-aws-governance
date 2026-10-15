@@ -16,7 +16,12 @@ import {
   type BadgeTone,
 } from "@/components/ui";
 import { getDataClient } from "@/lib/amplify/client";
-import { formatDateTime, pluralise } from "@/lib/format";
+import {
+  formatDateTime,
+  formatDateTimeWithZone,
+  pluralise,
+  timeZoneLabel,
+} from "@/lib/format";
 import { useAsyncData } from "@/lib/useAsyncData";
 
 import styles from "../Admin.module.css";
@@ -166,6 +171,8 @@ export default function AuditPage() {
             Every sign-in, file access and administrative action. Records are
             written server-side from the verified session and cannot be edited or
             deleted by anyone through this portal, including administrators.
+            Times are shown in <span className="data">{timeZoneLabel()}</span>,
+            whichever timezone you are reading from.
           </p>
         </div>
         <Button onClick={() => void refresh()} disabled={loading}>
@@ -249,7 +256,14 @@ export default function AuditPage() {
                 <tbody>
                   {visible.map((row) => (
                     <tr key={row.id}>
-                      <td className="data" style={{ whiteSpace: "nowrap" }}>
+                      <td
+                        className="data"
+                        style={{ whiteSpace: "nowrap" }}
+                        // Seconds and the zone on hover: two events moments
+                        // apart otherwise render identically, which reads as a
+                        // duplicated record.
+                        title={formatDateTimeWithZone(row.occurredAt)}
+                      >
                         {formatDateTime(row.occurredAt)}
                       </td>
                       <td>

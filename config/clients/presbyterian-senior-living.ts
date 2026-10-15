@@ -57,6 +57,8 @@ export const clientConfig: ClientConfig = {
     width: 270,
     height: 60,
   },
+  // PSL is headquartered in Dillsburg, Pennsylvania.
+  timeZone: "America/New_York",
   bucketProvisioning: "existing",
   portalUrl: "https://main.d3laxfbzj1h61h.amplifyapp.com",
   buckets: [
