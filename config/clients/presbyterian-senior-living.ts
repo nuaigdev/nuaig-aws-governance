@@ -82,13 +82,12 @@ export const clientConfig: ClientConfig = {
       id: "user-admin",
       label: "User Administrator",
       description:
-        "Manages users and reads the audit log. Cannot see or change which buckets a group reaches.",
+        "Manages users and reads the audit log, and reads and uploads to every bucket. Cannot see or change which buckets a group reaches.",
       isUserAdmin: true,
-      // No bucket grants of its own: administrative capability and data access
-      // stay separate, so a client administrator reaches a bucket only by also
-      // being in one of its groups — which is visible on their own user record
-      // like everybody else's.
-      bucketAccess: [],
+      // Same data reach as the full administrator. Both tiers administer the
+      // portal, and an administrator who cannot open the buckets they are
+      // granting other people access to cannot check their own work.
+      bucketAccess: [{ bucketId: "*", mode: "read-upload" }],
     },
     {
       id: "amazon-psl-bucket-read",
