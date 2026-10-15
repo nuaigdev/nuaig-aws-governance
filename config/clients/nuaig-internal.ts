@@ -13,6 +13,7 @@ export const clientConfig: ClientConfig = {
   clientId: "nuaig-internal",
   displayName: "Northwind Care Group",
   // Our showcase account has no pre-existing buckets, so the stack creates them.
+  portalUrl: "http://localhost:3000",
   bucketProvisioning: "managed",
   // Our own showcase, so our branding belongs here. Client tenants omit this.
   showNuaigBranding: true,

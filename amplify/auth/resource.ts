@@ -1,6 +1,7 @@
 import { defineAuth } from "@aws-amplify/backend";
 
 import { activeClient } from "../../config/index";
+import { inviteEmailBody, inviteEmailSubject } from "../../config/invite-email";
 import { postAuthenticationFunction } from "../functions/post-authentication/resource";
 
 /**
@@ -16,7 +17,25 @@ import { postAuthenticationFunction } from "../functions/post-authentication/res
  */
 export const auth = defineAuth({
   loginWith: {
-    email: true,
+    email: {
+      /**
+       * The invitation an administrator's "create user" sends.
+       *
+       * Cognito's default is a one-line message naming a username and a
+       * password, which reads like phishing to someone who was not told to
+       * expect it — exactly the wrong first impression for a portal holding
+       * resident records. The replacement explains what the portal is, links
+       * to it, and sets out the three setup steps.
+       *
+       * `user()` and `code()` return Cognito's `{username}` and `{####}`
+       * placeholders, substituted when the message is sent.
+       */
+      userInvitation: {
+        emailSubject: inviteEmailSubject(activeClient),
+        emailBody: (user: () => string, code: () => string) =>
+          inviteEmailBody(activeClient, user(), code()),
+      },
+    },
   },
 
   // Group order matters: Amplify assigns precedence by array position, and

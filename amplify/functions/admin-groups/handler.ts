@@ -57,7 +57,7 @@ export const handler = async (
    * path writes nothing — no branch of it reaches `PutRolePolicy`. Every other
    * field falls through to the gate, which is unchanged.
    */
-  if (event.info?.fieldName === "myBucketAccess") {
+  if (fieldNameOf(event) === "myBucketAccess") {
     return await myBucketAccess(caller.groups);
   }
 
@@ -97,6 +97,30 @@ export const handler = async (
     throw new Error("The operation could not be completed. The error has been logged.");
   }
 };
+
+/**
+ * Which GraphQL field this invocation is for.
+ *
+ * Amplify's generated pipeline resolver puts `fieldName` at the **top level**
+ * of the Lambda payload, alongside `identity` and `request`; there is no `info`
+ * object at all. Reading `event.info.fieldName` therefore returned `undefined`
+ * for every call, and `myBucketAccess` fell through to the administrator gate —
+ * which a full admin passed, only to fail on an undefined operation, and a user
+ * administrator failed outright. Both produced a misleading `ACCESS_DENIED`.
+ *
+ * The `info` branch is kept as a fallback so this still works if the generated
+ * resolver is ever replaced by a direct Lambda data source, which does send the
+ * standard AppSync shape.
+ */
+function fieldNameOf(event: AppSyncResolverEvent<unknown>): string | undefined {
+  const payload = event as unknown as {
+    fieldName?: unknown;
+    info?: { fieldName?: unknown };
+  };
+  if (typeof payload.fieldName === "string") return payload.fieldName;
+  if (typeof payload.info?.fieldName === "string") return payload.info.fieldName;
+  return undefined;
+}
 
 /* -------------------------------------------------------------------------- */
 

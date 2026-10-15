@@ -58,6 +58,19 @@ export function validateClientConfig(config: ClientConfig): ClientConfig {
     }
   }
 
+  // The invitation email links here, so a malformed value is a dead link in a
+  // client's inbox rather than a build-time mistake someone notices.
+  if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/.test(config.portalUrl)) {
+    problems.push(
+      `portalUrl "${config.portalUrl}" is not a valid absolute URL ` +
+        `(e.g. https://main.d1234.amplifyapp.com)`,
+    );
+  } else if (config.portalUrl.endsWith("/")) {
+    problems.push(
+      `portalUrl "${config.portalUrl}" must not end in a slash; links are built by appending paths`,
+    );
+  }
+
   const dupGroupIds = duplicates(config.groups.map((g) => g.id));
   if (dupGroupIds.length > 0) {
     problems.push(`duplicate group id(s): ${dupGroupIds.join(", ")}`);

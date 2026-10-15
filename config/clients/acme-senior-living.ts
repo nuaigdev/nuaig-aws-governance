@@ -13,6 +13,7 @@ export const clientConfig: ClientConfig = {
   displayName: "Acme Senior Living",
   // A real client's buckets already exist; the stack adopts them by name and
   // never creates or destroys them.
+  portalUrl: "https://example.invalid",
   bucketProvisioning: "existing",
   buckets: [
     {

@@ -20,6 +20,7 @@ import { ClientConfigError, validateClientConfig } from "./validate";
 const config: ClientConfig = {
   clientId: "test-client",
   displayName: "Test Client",
+  portalUrl: "https://portal.test.invalid",
   bucketProvisioning: "managed",
   buckets: [
     { id: "docs", label: "Docs", bucketName: "test-docs", description: "d", sensitivity: "standard" },

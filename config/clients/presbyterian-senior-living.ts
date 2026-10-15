@@ -51,6 +51,7 @@ export const clientConfig: ClientConfig = {
   // client to confirm this is the version they want used, or supply their own.
   logo: "/branding/presbyterian-senior-living/logo.svg",
   bucketProvisioning: "existing",
+  portalUrl: "https://main.d3laxfbzj1h61h.amplifyapp.com",
   buckets: [
     {
       id: "amazon-psl-bucket",

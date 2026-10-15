@@ -655,7 +655,11 @@ function TotpSetupStep({
         {error && <Message tone="error">{error}</Message>}
 
         <ol className={styles.steps}>
-          <li>Open an authenticator app such as 1Password, Authy or Google Authenticator.</li>
+          <li>
+            Open an authenticator app — Microsoft Authenticator, Google
+            Authenticator, Authy and 1Password all work, as does any other app
+            that generates six-digit codes.
+          </li>
           <li>Scan the code below, or enter the key by hand.</li>
           <li>Enter the six-digit code the app shows.</li>
         </ol>

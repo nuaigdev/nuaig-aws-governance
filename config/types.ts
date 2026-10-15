@@ -110,6 +110,17 @@ export interface ClientConfig {
    */
   readonly bucketProvisioning: "managed" | "existing";
   /**
+   * The portal's own URL, used in the invitation email.
+   *
+   * Config rather than an environment variable on purpose: an unset variable
+   * would fall back to a default, and the default that makes sense for a local
+   * build — `http://localhost:3000` — would reach a client's inbox as a dead
+   * link. A missing value here fails the build instead.
+   *
+   * No trailing slash.
+   */
+  readonly portalUrl: string;
+  /**
    * Path to the client's own logo under `public/`. Omit when the client has
    * not supplied one — the UI then renders `displayName` as styled text.
    * Never invent a client logo.
