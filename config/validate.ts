@@ -71,6 +71,30 @@ export function validateClientConfig(config: ClientConfig): ClientConfig {
     );
   }
 
+  if (config.emailLogo) {
+    const { path, width, height } = config.emailLogo;
+    if (!path.startsWith("/")) {
+      problems.push(
+        `emailLogo.path "${path}" must start with "/" — it is resolved against portalUrl`,
+      );
+    }
+    // The whole reason this field exists separately from `logo`. Gmail strips
+    // SVG, so an SVG here renders as nothing in most inboxes.
+    if (/\.svgz?$/i.test(path)) {
+      problems.push(
+        `emailLogo.path "${path}" is an SVG; email clients strip SVG. ` +
+          `Supply a PNG or JPEG.`,
+      );
+    } else if (!/\.(png|jpe?g|gif)$/i.test(path)) {
+      problems.push(
+        `emailLogo.path "${path}" must be a .png, .jpg or .gif`,
+      );
+    }
+    if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) {
+      problems.push(`emailLogo width and height must both be positive numbers`);
+    }
+  }
+
   const dupGroupIds = duplicates(config.groups.map((g) => g.id));
   if (dupGroupIds.length > 0) {
     problems.push(`duplicate group id(s): ${dupGroupIds.join(", ")}`);

@@ -50,6 +50,13 @@ export const clientConfig: ClientConfig = {
   // Their corporate mark, as published on presbyterianseniorliving.org. Ask the
   // client to confirm this is the version they want used, or supply their own.
   logo: "/branding/presbyterian-senior-living/logo.svg",
+  // Rasterised from the SVG above at 2x, flattened onto white so it does not
+  // vanish in a mail client that forces a dark background.
+  emailLogo: {
+    path: "/branding/presbyterian-senior-living/logo-email.png",
+    width: 270,
+    height: 60,
+  },
   bucketProvisioning: "existing",
   portalUrl: "https://main.d3laxfbzj1h61h.amplifyapp.com",
   buckets: [

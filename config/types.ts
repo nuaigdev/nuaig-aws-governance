@@ -127,6 +127,25 @@ export interface ClientConfig {
    */
   readonly logo?: string;
   /**
+   * Raster logo for the invitation email, served from `public/`.
+   *
+   * Separate from `logo` because email cannot use the same asset: `logo` is an
+   * SVG, and Gmail strips SVG entirely, so it would render as nothing at all.
+   * Omit it and the email falls back to the client's name as a text wordmark,
+   * which is correct — a missing logo is better than a broken one.
+   *
+   * `width` and `height` are the *display* size; supply the file at twice that
+   * so it is not soft on a high-density screen. Both are set as HTML attributes
+   * so the layout does not jump while the image loads, and so a client that
+   * blocks remote images still reserves the right space.
+   */
+  readonly emailLogo?: {
+    /** Absolute path from the site root, e.g. `/branding/acme/logo-email.png`. */
+    readonly path: string;
+    readonly width: number;
+    readonly height: number;
+  };
+  /**
    * Whether Nuaig's own branding appears in the portal — the footer logo, the
    * "built and managed by" line and our copyright.
    *

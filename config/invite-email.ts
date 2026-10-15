@@ -43,6 +43,26 @@ export function inviteEmailSubject(client: ClientConfig): string {
 }
 
 /**
+ * The masthead: the client's logo, or their name as text when they have no
+ * raster one.
+ *
+ * `width`/`height` are set as attributes as well as styles. Most clients block
+ * remote images until the reader allows them, and without the attributes the
+ * blocked-image placeholder collapses and the header looks broken before a
+ * single pixel has loaded. The `alt` text carries the client's name, so the
+ * email still identifies itself when images never load at all.
+ */
+function header(client: ClientConfig): string {
+  const { displayName, emailLogo, portalUrl } = client;
+
+  if (!emailLogo) {
+    return `<div style="font-size:19px; font-weight:600; color:${PRIMARY}; letter-spacing:0.2px;">${displayName}</div>`;
+  }
+
+  return `<img src="${portalUrl}${emailLogo.path}" alt="${displayName}" width="${emailLogo.width}" height="${emailLogo.height}" style="display:block; border:0; outline:none; text-decoration:none; width:${emailLogo.width}px; max-width:100%; height:auto; font-size:17px; font-weight:600; color:${PRIMARY};">`;
+}
+
+/**
  * Builds the invitation body.
  *
  * `username` and `temporaryPassword` are the raw Cognito placeholder tokens
@@ -72,9 +92,9 @@ export function inviteEmailBody(
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px; background-color:${SURFACE}; border:1px solid ${BORDER}; border-radius:8px; overflow:hidden;">
 
   <tr>
-    <td style="background-color:${PRIMARY}; padding:24px 32px;">
-      <div style="font-size:17px; font-weight:600; color:#FFFFFF; letter-spacing:0.2px;">${displayName}</div>
-      <div style="font-size:13px; color:${PRIMARY_TINT}; margin-top:4px;">Secure file portal</div>
+    <td style="background-color:${SURFACE}; padding:28px 32px 22px 32px; border-bottom:3px solid ${PRIMARY};">
+      ${header(client)}
+      <div style="font-size:13px; color:${INK_MUTED}; margin-top:14px; letter-spacing:0.3px;">Secure file portal</div>
     </td>
   </tr>
 

@@ -56,6 +56,26 @@ describe("inviteEmailBody", () => {
     assert.doesNotMatch(render(psl), /<svg|\.svg/i);
   });
 
+  it("shows the logo as an absolute URL, since email has no site root", () => {
+    const html = render(psl);
+    assert.ok(psl.emailLogo, "PSL should have a raster email logo");
+    assert.ok(html.includes(`src="${psl.portalUrl}${psl.emailLogo!.path}"`));
+  });
+
+  it("gives the logo width and height attributes and an identifying alt", () => {
+    const html = render(psl);
+    assert.match(html, new RegExp(`width="${psl.emailLogo!.width}"`));
+    assert.match(html, new RegExp(`height="${psl.emailLogo!.height}"`));
+    assert.ok(html.includes(`alt="${psl.displayName}"`));
+  });
+
+  it("falls back to a text wordmark when a client has no raster logo", () => {
+    const noLogo: ClientConfig = { ...psl, emailLogo: undefined };
+    const html = inviteEmailBody(noLogo, USERNAME, CODE);
+    assert.doesNotMatch(html, /<img/);
+    assert.ok(html.includes(psl.displayName));
+  });
+
   it("stays inside Cognito's 20,000 character limit for every client", () => {
     for (const client of [psl, nuaigInternal]) {
       const length = render(client).length;
