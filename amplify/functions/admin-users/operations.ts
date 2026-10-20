@@ -216,6 +216,53 @@ function validateGroups(value: unknown): string[] {
 /** The configured admin group id. Validated to exist by `validateClientConfig`. */
 export const ADMIN_GROUP = activeClient.groups.find((g) => g.isAdmin)!.id;
 
+/** The subset of Cognito's user record that resending an invitation depends on. */
+export interface InvitationCandidate {
+  readonly Enabled?: boolean;
+  readonly UserStatus?: string;
+  readonly UserAttributes?: readonly { readonly Name?: string; readonly Value?: string }[];
+}
+
+/**
+ * The address a fresh invitation should be sent to, or a refusal.
+ *
+ * ## Why this returns an email and not the username
+ *
+ * The pool sets `UsernameAttributes: ["email"]`, which makes a user's Cognito
+ * username an opaque UUID while `AdminCreateUser` requires its `Username`
+ * parameter to be email-shaped. Passing the UUID — the identifier every other
+ * admin call here takes — fails with "Username should be an email", which left
+ * the only remedy for an expired invitation broken in production.
+ *
+ * Pulled out of the handler so the branching is testable without standing up
+ * Cognito: the handler is then just the two SDK calls around this decision.
+ */
+export function invitationTarget(user: InvitationCandidate): string {
+  if (!user.Enabled) {
+    throw new OperationError(
+      `This account is disabled. Re-enable it before sending a new invitation.`,
+    );
+  }
+
+  // RESEND only applies while the original invitation is outstanding; Cognito
+  // refuses it once the user has set their own password.
+  if (user.UserStatus !== "FORCE_CHANGE_PASSWORD") {
+    throw new OperationError(
+      `This user has already signed in, so there is no invitation to resend. ` +
+        `Use "Reset password" instead.`,
+    );
+  }
+
+  const email = user.UserAttributes?.find((a) => a.Name === "email")?.Value;
+  if (!email) {
+    throw new OperationError(
+      `This account has no email address recorded, so an invitation cannot be sent.`,
+    );
+  }
+
+  return email;
+}
+
 /**
  * Refuses changes that would leave the portal with no way back in.
  *
