@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { OperationError, parseOperation } from "./operations";
+import { invitationTarget, OperationError, parseOperation } from "./operations";
 
 describe("parseOperation: resetPassword", () => {
   it("accepts a username", () => {
@@ -89,5 +89,59 @@ describe("parseOperation: updateProfile", () => {
       email: "attacker@example.com",
     });
     assert.equal("email" in parsed, false);
+  });
+});
+
+describe("invitationTarget", () => {
+  const pending = {
+    Enabled: true,
+    UserStatus: "FORCE_CHANGE_PASSWORD",
+    UserAttributes: [
+      { Name: "sub", Value: "e4d80448-30d1-709e-60c9-3ead8702ff3f" },
+      { Name: "email", Value: "dlarkin@psl.org" },
+    ],
+  };
+
+  /**
+   * The production bug this guards against: the handler passed the Cognito
+   * username — a UUID in this pool — to AdminCreateUser, which requires an
+   * email and refused with "Username should be an email". Resending an
+   * invitation is the only remedy for an expired temporary password, so the
+   * failure left a new user with no way in at all.
+   */
+  it("returns the email, never the opaque username", () => {
+    const target = invitationTarget(pending);
+    assert.equal(target, "dlarkin@psl.org");
+    assert.match(target, /@/, "AdminCreateUser rejects a non-email username");
+  });
+
+  it("refuses a user who has already signed in, and says what to do instead", () => {
+    assert.throws(
+      () => invitationTarget({ ...pending, UserStatus: "CONFIRMED" }),
+      (error: unknown) => {
+        assert.ok(error instanceof OperationError);
+        assert.match(error.message, /Reset password/);
+        return true;
+      },
+    );
+  });
+
+  it("refuses a disabled account", () => {
+    assert.throws(
+      () => invitationTarget({ ...pending, Enabled: false }),
+      /disabled/,
+    );
+  });
+
+  it("refuses rather than guessing when no email is recorded", () => {
+    assert.throws(
+      () => invitationTarget({ ...pending, UserAttributes: [{ Name: "sub", Value: "x" }] }),
+      /no email address/,
+    );
+    assert.throws(() => invitationTarget({ ...pending, UserAttributes: undefined }), OperationError);
+  });
+
+  it("treats a missing Enabled flag as not enabled", () => {
+    assert.throws(() => invitationTarget({ ...pending, Enabled: undefined }), OperationError);
   });
 });

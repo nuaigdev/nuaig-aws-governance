@@ -37,6 +37,7 @@ import { resolveCaller } from "../shared/identity";
 import {
   ADMIN_GROUP,
   assertAdminSafety,
+  invitationTarget,
   OperationError,
   parseOperation,
   type PortalUser,
@@ -312,11 +313,31 @@ async function setUserGroups(
   return { username, groups: nextGroups };
 }
 
+/**
+ * Sends the invitation again, with a fresh temporary password.
+ *
+ * ## `AdminCreateUser` needs the email, not the username
+ *
+ * This pool sets `UsernameAttributes: ["email"]`, so a user's Cognito username
+ * is an opaque UUID while `AdminCreateUser` requires its `Username` parameter
+ * to be email-shaped. Passing the UUID — which is what every other admin call
+ * here takes — fails with "Username should be an email", so the one remedy for
+ * an expired invitation was itself broken.
+ *
+ * The address is read back from Cognito rather than taken from the request, so
+ * the invitation can only ever go to the account's own registered email.
+ */
 async function resendInvite(username: string, caller: ReturnType<typeof resolveCaller>) {
+  const user = await cognito.send(
+    new AdminGetUserCommand({ UserPoolId: USER_POOL_ID, Username: username }),
+  );
+
+  const email = invitationTarget(user);
+
   await cognito.send(
     new AdminCreateUserCommand({
       UserPoolId: USER_POOL_ID,
-      Username: username,
+      Username: email,
       MessageAction: "RESEND",
       DesiredDeliveryMediums: ["EMAIL"],
     }),
