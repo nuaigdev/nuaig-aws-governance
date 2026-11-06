@@ -3,21 +3,26 @@ import type { ClientConfig } from "../types";
 /**
  * Presbyterian Senior Living.
  *
- * Two buckets in the client's AWS account, adopted by name. The stack never
+ * Three buckets in the client's AWS account, adopted by name. The stack never
  * creates, modifies or destroys them — `verify:stack` proves that mechanically.
  *
- * ## Why only two, and why they are not split by category
+ * ## Which buckets, and why they are not split by category
  *
- * The account holds four buckets; only these two belong in the portal. Each of
- * them mixes documents, resident data and clinical records, so there is no
- * honest "clinical bucket" or "financial bucket" to label — the earlier
- * four-category layout was a template, not this client's reality. Both are
- * therefore named as they are and marked sensitive. Splitting access by folder
- * prefix would be a separate piece of work, not something to imply here.
+ * The account holds four buckets of client data; three of them belong in the
+ * portal. Each mixes documents, resident data and clinical records, so there is
+ * no honest "clinical bucket" or "financial bucket" to label — the earlier
+ * four-category layout was a template, not this client's reality. All three are
+ * therefore marked sensitive. Splitting access by folder prefix would be a
+ * separate piece of work, not something to imply here.
  *
- * The other two buckets are deliberately absent from this file. Absence is the
- * control: no script, IAM policy or permissions boundary generated from this
- * config ever references them.
+ * `connectedliving-backup` is deliberately absent from this file. Absence is
+ * the control: no script, IAM policy or permissions boundary generated from
+ * this config ever references it.
+ *
+ * The IntelliChief bucket is the one case where `label` is not the bucket name.
+ * Its physical name carries an account id and region suffix, which is noise to
+ * a member of staff; `id` is what appears in URLs and group ids, `bucketName`
+ * is the only place the physical name is written down.
  *
  * ## Two groups per bucket, and two administrative tiers
  *
@@ -76,6 +81,18 @@ export const clientConfig: ClientConfig = {
       description: "Contains protected health information and health records.",
       sensitivity: "sensitive",
     },
+    {
+      id: "intellichief-legacy-data",
+      label: "IntelliChief Legacy Data",
+      // Pre-existing and empty as at 2026-11-06. The suffix is part of the
+      // real bucket name, not a typo — do not "tidy" it, or every grant, the
+      // permissions boundary and the deny-deletion policy silently stop
+      // matching the bucket they are meant to govern.
+      bucketName: "ic-legacy-data-918409590479-us-east-1-an",
+      description:
+        "Archived records migrated from IntelliChief. Contains protected health information and health records.",
+      sensitivity: "sensitive",
+    },
   ],
   groups: [
     // Order is load-bearing: `defineAuth` assigns Cognito precedence by array
@@ -124,6 +141,25 @@ export const clientConfig: ClientConfig = {
       description:
         "View, download and upload to connectedliving-to-goicon. Nothing can be deleted or overwritten.",
       bucketAccess: [{ bucketId: "connectedliving-to-goicon", mode: "read-upload" }],
+    },
+    // Appended, not inserted. `defineAuth` derives Cognito precedence from
+    // array position, so adding these at the end leaves every existing group's
+    // precedence — and therefore which role a multi-group user assumes —
+    // exactly as it was. Both administrator tiers already hold
+    // `{ bucketId: "*", mode: "read-upload" }`, so they pick up read and upload
+    // on this bucket with no further change.
+    {
+      id: "intellichief-legacy-data-read",
+      label: "IntelliChief Legacy Data — Read only",
+      description: "View and download from IntelliChief Legacy Data. Cannot upload.",
+      bucketAccess: [{ bucketId: "intellichief-legacy-data", mode: "read" }],
+    },
+    {
+      id: "intellichief-legacy-data-upload",
+      label: "IntelliChief Legacy Data — Read & upload",
+      description:
+        "View, download and upload to IntelliChief Legacy Data. Nothing can be deleted or overwritten.",
+      bucketAccess: [{ bucketId: "intellichief-legacy-data", mode: "read-upload" }],
     },
   ],
 };
